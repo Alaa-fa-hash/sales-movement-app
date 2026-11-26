@@ -108,6 +108,7 @@ private fun SalesMovementApp() {
     val quantities = remember { mutableStateMapOf<String, String>().apply { putAll(loadDay(preferences, dateKey)) } }
     var message by remember { mutableStateOf("") }
     var historyOpen by remember { mutableStateOf(false) }
+    var newTaskConfirm by remember { mutableStateOf(false) }
     var selectedTab by remember { mutableStateOf(SalesTab.TOTAL) }
     val specialSales = remember {
         mutableStateListOf<SpecialSaleDraft>().apply {
@@ -134,6 +135,10 @@ private fun SalesMovementApp() {
     val totals = calculateTotals(products, quantities)
     val specialTotal = calculateSpecialTotal(specialSales)
     val dailyTotals = totals.copy(revenue = totals.revenue + specialTotal)
+    fun persistCurrentDay() {
+        val currentTotals = calculateTotals(products, quantities)
+        saveDay(preferences, dateKey, quantities, currentTotals.copy(revenue = currentTotals.revenue + calculateSpecialTotal(specialSales)), specialSales)
+    }
 
     MaterialTheme {
         Surface(Modifier.fillMaxSize(), color = Page) {
@@ -142,11 +147,18 @@ private fun SalesMovementApp() {
                 SummaryBar(dailyTotals)
                 Actions(
                     onImport = { launcher.launch(arrayOf("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/vnd.ms-excel")) },
-                    onSave = { saveDay(preferences, dateKey, quantities, dailyTotals, specialSales); message = "تم حفظ مبيعات $date" },
+                    onSave = { persistCurrentDay(); message = "تم حفظ مبيعات $date" },
                         onExport = { exporter.launch("مبيعات-${date.replace('/', '-')}.xlsx") },
                     onExportHistory = { historyExporter.launch("سجل-المبيعات.xlsx") },
                     onHistory = { historyOpen = true },
-                    onClear = { quantities.clear(); message = "تم تصفير إدخالات اليوم" },
+                    onNewTask = { newTaskConfirm = true },
+                    onClear = {
+                        quantities.clear()
+                        specialSales.clear()
+                        specialSales.add(SpecialSaleDraft())
+                        persistCurrentDay()
+                        message = "تم تصفير إدخالات اليوم"
+                    },
                 )
                 if (message.isNotBlank()) Text(message, color = Green, fontSize = 14.sp, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
                 if (products.isEmpty()) EmptyState() else {
@@ -156,11 +168,11 @@ private fun SalesMovementApp() {
                         }
                     }
                     if (selectedTab == SalesTab.SPECIAL) {
-                        SpecialSalesTable(catalog, specialSales) { specialSales.add(SpecialSaleDraft()) }
+                        SpecialSalesTable(catalog, specialSales, onChanged = { persistCurrentDay() }) { specialSales.add(SpecialSaleDraft()); persistCurrentDay() }
                     } else {
                         TableHeader(selectedTab)
                         LazyColumn(Modifier.fillMaxSize().padding(horizontal = 10.dp)) {
-                            itemsIndexed(products) { index, product -> ProductRow(product, selectedTab, quantities, index) { field, value -> quantities[key(product.code, field)] = sanitizeQuantity(value, field.startsWith("carton")) } }
+                            itemsIndexed(products) { index, product -> ProductRow(product, selectedTab, quantities, index) { field, value -> quantities[key(product.code, field)] = sanitizeQuantity(value, field.startsWith("carton")); persistCurrentDay() } }
                             item { Spacer(Modifier.height(28.dp)) }
                         }
                     }
@@ -169,6 +181,24 @@ private fun SalesMovementApp() {
         }
     }
     if (historyOpen) HistoryDialog(preferences) { historyOpen = false }
+    if (newTaskConfirm) {
+        AlertDialog(
+            onDismissRequest = { newTaskConfirm = false },
+            title = { Text("بدء مهمة جديدة", color = Navy, fontWeight = FontWeight.Bold) },
+            text = { Text("سيتم حذف كل سجلات المبيعات والبيع الخاص مع إبقاء دليل المواد. هل تريد المتابعة؟") },
+            confirmButton = {
+                Button(onClick = {
+                    clearSalesHistory(preferences)
+                    quantities.clear()
+                    specialSales.clear()
+                    specialSales.add(SpecialSaleDraft())
+                    newTaskConfirm = false
+                    message = "بدأت مهمة جديدة"
+                }, colors = ButtonDefaults.buttonColors(containerColor = Teal)) { Text("بدء") }
+            },
+            dismissButton = { TextButton(onClick = { newTaskConfirm = false }) { Text("إلغاء") } },
+        )
+    }
 }
 
 @Composable
@@ -202,7 +232,7 @@ private fun SummaryCell(label: String, value: Double, color: Color = Navy, suffi
 }
 
 @Composable
-private fun Actions(onImport: () -> Unit, onSave: () -> Unit, onExport: () -> Unit, onExportHistory: () -> Unit, onHistory: () -> Unit, onClear: () -> Unit) {
+private fun Actions(onImport: () -> Unit, onSave: () -> Unit, onExport: () -> Unit, onExportHistory: () -> Unit, onHistory: () -> Unit, onNewTask: () -> Unit, onClear: () -> Unit) {
     Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
         Button(onClick = onImport, colors = ButtonDefaults.buttonColors(containerColor = Teal), contentPadding = ButtonDefaults.TextButtonContentPadding, modifier = Modifier.weight(1f).height(40.dp)) { Text("دليل", fontSize = 12.sp, maxLines = 1) }
         Button(onClick = onSave, colors = ButtonDefaults.buttonColors(containerColor = Green), contentPadding = ButtonDefaults.TextButtonContentPadding, modifier = Modifier.weight(1f).height(40.dp)) { Text("حفظ اليوم", fontSize = 11.sp, maxLines = 1) }
@@ -210,6 +240,7 @@ private fun Actions(onImport: () -> Unit, onSave: () -> Unit, onExport: () -> Un
         TextButton(onClick = onHistory, contentPadding = ButtonDefaults.TextButtonContentPadding, modifier = Modifier.weight(1f).height(40.dp)) { Text("السجل", fontSize = 12.sp, maxLines = 1) }
     }
     OutlinedButton(onClick = onExportHistory, contentPadding = ButtonDefaults.TextButtonContentPadding, modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp).height(34.dp)) { Text("تصدير سجل Excel", fontSize = 12.sp, maxLines = 1) }
+    OutlinedButton(onClick = onNewTask, contentPadding = ButtonDefaults.TextButtonContentPadding, modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp).height(34.dp)) { Text("بدء مهمة جديدة", fontSize = 12.sp, maxLines = 1) }
     TextButton(onClick = onClear, modifier = Modifier.fillMaxWidth().height(32.dp)) { Text("تصفير الإدخالات", fontSize = 12.sp) }
 }
 
@@ -237,7 +268,7 @@ private fun TableHeader(tab: SalesTab) {
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
-private fun SpecialSalesTable(catalog: List<MaterialCatalog>, rows: List<SpecialSaleDraft>, onAddRow: () -> Unit) {
+private fun SpecialSalesTable(catalog: List<MaterialCatalog>, rows: List<SpecialSaleDraft>, onChanged: () -> Unit, onAddRow: () -> Unit) {
     Column(Modifier.fillMaxSize().padding(horizontal = 10.dp)) {
         Row(Modifier.fillMaxWidth().background(Navy).padding(vertical = 4.dp, horizontal = 3.dp), verticalAlignment = Alignment.CenterVertically) {
             Text("رمز المادة", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.05f), textAlign = TextAlign.Center, maxLines = 1)
@@ -252,10 +283,10 @@ private fun SpecialSalesTable(catalog: List<MaterialCatalog>, rows: List<Special
                 val total = if (row.quantity.isNotBlank() && row.price.isNotBlank()) amount(row.quantity) * amount(row.price) else null
                 val rowColor = if (index % 2 == 0) Color.White else RowAlt
                 Row(Modifier.fillMaxWidth().background(rowColor).padding(vertical = 5.dp, horizontal = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-                    SpecialInputCell(row.code, Modifier.weight(1.05f), KeyboardType.Text, "رمز") { row.code = it }
+                    SpecialInputCell(row.code, Modifier.weight(1.05f), KeyboardType.Text, "رمز") { row.code = it; onChanged() }
                     Text(materialName.ifBlank { "—" }, color = Navy, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, modifier = Modifier.weight(1.55f).padding(horizontal = 3.dp), textAlign = TextAlign.End)
-                    SpecialInputCell(row.quantity, Modifier.weight(1f), KeyboardType.Decimal, "كمية") { row.quantity = sanitizeQuantity(it, true) }
-                    SpecialInputCell(row.price, Modifier.weight(1.15f), KeyboardType.Decimal, "سعر") { row.price = sanitizeQuantity(it, true) }
+                    SpecialInputCell(row.quantity, Modifier.weight(1f), KeyboardType.Decimal, "كمية") { row.quantity = sanitizeQuantity(it, true); onChanged() }
+                    SpecialInputCell(row.price, Modifier.weight(1.15f), KeyboardType.Decimal, "سعر") { row.price = sanitizeQuantity(it, true); onChanged() }
                     Text(total?.let(::formatMoney) ?: "—", color = Navy, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, modifier = Modifier.weight(1.15f), textAlign = TextAlign.Center)
                 }
                 HorizontalDivider(color = Color(0xFFD7E2E6))
@@ -448,6 +479,11 @@ private fun loadSpecialSales(p: android.content.SharedPreferences, day: String):
     SpecialSaleDraft().apply { code = parts[0]; quantity = parts[1]; price = parts[2] }
 }.toList()
 private fun calculateSpecialTotal(rows: List<SpecialSaleDraft>): Double = rows.sumOf { amount(it.quantity) * amount(it.price) }
+private fun clearSalesHistory(p: android.content.SharedPreferences) {
+    val editor = p.edit()
+    p.all.keys.filter { it == "saved_days" || it.startsWith("day_") || it.startsWith("special_") || it.startsWith("summary_") }.forEach(editor::remove)
+    editor.apply()
+}
 
 private fun exportXlsx(context: Context, uri: android.net.Uri, date: String, catalog: List<MaterialCatalog>, q: Map<String, String>, specialSales: List<SpecialSaleDraft>) {
     val products = buildProducts(catalog)
