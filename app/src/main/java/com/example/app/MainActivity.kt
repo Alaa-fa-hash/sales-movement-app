@@ -63,6 +63,7 @@ import org.apache.poi.ss.usermodel.VerticalAlignment
 import org.apache.poi.ss.util.CellRangeAddress
 import org.apache.poi.xssf.usermodel.XSSFWorkbook
 import org.apache.poi.xssf.usermodel.XSSFCellStyle
+import org.apache.poi.xssf.usermodel.XSSFColor
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -310,8 +311,9 @@ private fun exportXlsx(context: Context, uri: android.net.Uri, date: String, cat
     sheet.setRightToLeft(true)
     val headers = listOf("رمز المادة", "المادة", "جملة طرد", "جملة علبة", "مفرق طرد", "مفرق علبة", "قيمة الجملة", "قيمة المفرق", "إجمالي المبيعات")
     val numberFormat = workbook.createDataFormat().getFormat("#,##0")
-    fun makeStyle(fill: IndexedColors, bold: Boolean = false, numeric: Boolean = false): XSSFCellStyle = workbook.createCellStyle().apply {
-        fillForegroundColor = fill.index
+    fun rgb(hex: String): XSSFColor = XSSFColor(hex.chunked(2).map { it.toInt(16).toByte() }.toByteArray(), null)
+    fun makeStyle(fill: XSSFColor, bold: Boolean = false, numeric: Boolean = false, whiteText: Boolean = false): XSSFCellStyle = workbook.createCellStyle().apply {
+        setFillForegroundColor(fill)
         setFillPattern(FillPatternType.SOLID_FOREGROUND)
         setAlignment(HorizontalAlignment.CENTER)
         setVerticalAlignment(VerticalAlignment.CENTER)
@@ -320,15 +322,17 @@ private fun exportXlsx(context: Context, uri: android.net.Uri, date: String, cat
         setBorderTop(BorderStyle.THIN)
         setBorderBottom(BorderStyle.THIN)
         if (numeric) dataFormat = numberFormat
-        val font = workbook.createFont().apply { this.bold = bold; fontHeightInPoints = if (bold) 11 else 10; color = if (fill == IndexedColors.DARK_TEAL) IndexedColors.WHITE.index else IndexedColors.BLACK.index }
+        val font = workbook.createFont().apply { this.bold = bold; fontHeightInPoints = if (bold) 11 else 10; color = if (whiteText) IndexedColors.WHITE.index else IndexedColors.BLACK.index }
         setFont(font)
     }
-    val headerStyle = makeStyle(IndexedColors.DARK_TEAL, bold = true)
-    val bodyStyle = makeStyle(IndexedColors.WHITE)
-    val altStyle = makeStyle(IndexedColors.LIGHT_TURQUOISE)
-    val bodyNumberStyle = makeStyle(IndexedColors.WHITE, numeric = true)
-    val altNumberStyle = makeStyle(IndexedColors.LIGHT_TURQUOISE, numeric = true)
-    val totalStyle = makeStyle(IndexedColors.LIGHT_TURQUOISE, bold = true, numeric = true)
+    val headerStyle = makeStyle(rgb("1699A8"), bold = true, whiteText = true)
+    val whiteFill = rgb("FFFFFF")
+    val neutralFill = rgb("F2F5F7")
+    val bodyStyle = makeStyle(whiteFill)
+    val altStyle = makeStyle(neutralFill)
+    val bodyNumberStyle = makeStyle(whiteFill, numeric = true)
+    val altNumberStyle = makeStyle(neutralFill, numeric = true)
+    val totalStyle = makeStyle(neutralFill, bold = true, numeric = true)
     val header = sheet.createRow(0)
     header.heightInPoints = 26f
     headers.forEachIndexed { i, h -> header.createCell(i).apply { setCellValue(h); cellStyle = headerStyle } }
