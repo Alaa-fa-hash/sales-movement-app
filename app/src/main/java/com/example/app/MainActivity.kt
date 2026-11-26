@@ -218,7 +218,7 @@ private fun ProductRow(product: ProductLine, tab: SalesTab, quantities: MutableM
         Column(Modifier.weight(1.55f).padding(start = 7.dp, end = 3.dp), horizontalAlignment = Alignment.End) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(product.name, color = Navy, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
-                Text(priceLabel(product, tab), color = Color(0xFF687782), fontSize = 8.sp, maxLines = 1, modifier = Modifier.width(52.dp), textAlign = TextAlign.Start)
+                Text(priceLabel(product, tab), color = Color(0xFF687782), fontSize = 10.sp, fontWeight = FontWeight.Bold, maxLines = 1, modifier = Modifier.width(60.dp), textAlign = TextAlign.Start)
             }
         }
         if (tab != SalesTab.RETAIL) QuantityCell(product.carton != null, quantities[key(product.code, "carton_wholesale")].orEmpty(), Modifier.weight(1f), allowDecimal = true) { onChange("carton_wholesale", it) }
