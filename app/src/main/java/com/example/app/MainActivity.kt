@@ -43,6 +43,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -83,7 +84,12 @@ private val Green = Color(0xFF0B7A8C)
 
 private data class ProductLine(val code: String, val name: String, val carton: MaterialCatalog?, val box: MaterialCatalog?)
 private data class Totals(val wholesale: Double, val retail: Double, val revenue: Double)
-private enum class SalesTab(val title: String) { WHOLESALE("مبيع جملة"), RETAIL("مبيع مفرق"), TOTAL("الكلي") }
+private class SpecialSaleDraft {
+    var code by mutableStateOf("")
+    var quantity by mutableStateOf("")
+    var price by mutableStateOf("")
+}
+private enum class SalesTab(val title: String) { WHOLESALE("مبيع جملة"), RETAIL("مبيع مفرق"), TOTAL("الكلي"), SPECIAL("بيع خاص") }
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -103,6 +109,7 @@ private fun SalesMovementApp() {
     var message by remember { mutableStateOf("") }
     var historyOpen by remember { mutableStateOf(false) }
     var selectedTab by remember { mutableStateOf(SalesTab.TOTAL) }
+    val specialSales = remember { mutableStateListOf(SpecialSaleDraft()) }
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
         runCatching {
@@ -141,10 +148,14 @@ private fun SalesMovementApp() {
                             Tab(selected = selectedTab == tab, onClick = { selectedTab = tab }, modifier = Modifier.height(36.dp), text = { Text(tab.title, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1) })
                         }
                     }
-                    TableHeader(selectedTab)
-                    LazyColumn(Modifier.fillMaxSize().padding(horizontal = 10.dp)) {
-                        itemsIndexed(products) { index, product -> ProductRow(product, selectedTab, quantities, index) { field, value -> quantities[key(product.code, field)] = sanitizeQuantity(value, field.startsWith("carton")) } }
-                        item { Spacer(Modifier.height(28.dp)) }
+                    if (selectedTab == SalesTab.SPECIAL) {
+                        SpecialSalesTable(catalog, specialSales) { specialSales.add(SpecialSaleDraft()) }
+                    } else {
+                        TableHeader(selectedTab)
+                        LazyColumn(Modifier.fillMaxSize().padding(horizontal = 10.dp)) {
+                            itemsIndexed(products) { index, product -> ProductRow(product, selectedTab, quantities, index) { field, value -> quantities[key(product.code, field)] = sanitizeQuantity(value, field.startsWith("carton")) } }
+                            item { Spacer(Modifier.height(28.dp)) }
+                        }
                     }
                 }
             }
@@ -215,6 +226,65 @@ private fun TableHeader(tab: SalesTab) {
         if (tab != SalesTab.WHOLESALE) Text("طرد", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center, maxLines = 1)
         if (tab != SalesTab.WHOLESALE) Text("علبة", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center, maxLines = 1)
     }
+}
+
+@Composable
+@OptIn(ExperimentalMaterial3Api::class)
+private fun SpecialSalesTable(catalog: List<MaterialCatalog>, rows: List<SpecialSaleDraft>, onAddRow: () -> Unit) {
+    Column(Modifier.fillMaxSize().padding(horizontal = 10.dp)) {
+        Row(Modifier.fillMaxWidth().background(Navy).padding(vertical = 4.dp, horizontal = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text("رمز المادة", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.05f), textAlign = TextAlign.Center, maxLines = 1)
+            Text("المادة", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.55f), textAlign = TextAlign.Center, maxLines = 1)
+            Text("الكمية", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center, maxLines = 1)
+            Text("السعر الخاص", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.15f), textAlign = TextAlign.Center, maxLines = 1)
+            Text("الإجمالي", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.15f), textAlign = TextAlign.Center, maxLines = 1)
+        }
+        LazyColumn(Modifier.fillMaxSize()) {
+            itemsIndexed(rows) { index, row ->
+                val materialName = catalog.firstOrNull { it.code.trim() == row.code.trim() }?.name.orEmpty()
+                val total = if (row.quantity.isNotBlank() && row.price.isNotBlank()) amount(row.quantity) * amount(row.price) else null
+                val rowColor = if (index % 2 == 0) Color.White else RowAlt
+                Row(Modifier.fillMaxWidth().background(rowColor).padding(vertical = 5.dp, horizontal = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                    SpecialInputCell(row.code, Modifier.weight(1.05f), KeyboardType.Text, "رمز") { row.code = it }
+                    Text(materialName.ifBlank { "—" }, color = Navy, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, modifier = Modifier.weight(1.55f).padding(horizontal = 3.dp), textAlign = TextAlign.End)
+                    SpecialInputCell(row.quantity, Modifier.weight(1f), KeyboardType.Decimal, "كمية") { row.quantity = sanitizeQuantity(it, true) }
+                    SpecialInputCell(row.price, Modifier.weight(1.15f), KeyboardType.Decimal, "سعر") { row.price = sanitizeQuantity(it, true) }
+                    Text(total?.let(::formatMoney) ?: "—", color = Navy, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, modifier = Modifier.weight(1.15f), textAlign = TextAlign.Center)
+                }
+                HorizontalDivider(color = Color(0xFFD7E2E6))
+            }
+            item {
+                OutlinedButton(onClick = onAddRow, modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)) { Text("إضافة مادة بيع خاص") }
+                Spacer(Modifier.height(28.dp))
+            }
+        }
+    }
+}
+
+@Composable
+@OptIn(ExperimentalMaterial3Api::class)
+private fun SpecialInputCell(value: String, modifier: Modifier, keyboardType: KeyboardType, placeholder: String, onValueChange: (String) -> Unit) {
+    val interactionSource = remember { MutableInteractionSource() }
+    BasicTextField(
+        value = value,
+        onValueChange = onValueChange,
+        singleLine = true,
+        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = keyboardType, imeAction = ImeAction.Done),
+        textStyle = TextStyle(color = Navy, fontSize = 12.sp, lineHeight = 18.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center),
+        modifier = modifier.height(42.dp).padding(horizontal = 2.dp),
+        decorationBox = { innerTextField ->
+            OutlinedTextFieldDefaults.DecorationBox(
+                value = value,
+                innerTextField = innerTextField,
+                enabled = true,
+                singleLine = true,
+                visualTransformation = VisualTransformation.None,
+                interactionSource = interactionSource,
+                placeholder = { Text(placeholder, color = Color(0xFF8A969C), fontSize = 10.sp) },
+                contentPadding = PaddingValues(0.dp),
+            )
+        },
+    )
 }
 
 @Composable
