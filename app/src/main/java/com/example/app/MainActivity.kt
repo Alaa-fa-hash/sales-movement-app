@@ -137,7 +137,7 @@ private fun SalesMovementApp() {
                     }
                     TableHeader(selectedTab)
                     LazyColumn(Modifier.fillMaxSize().padding(horizontal = 10.dp)) {
-                        itemsIndexed(products) { index, product -> ProductRow(product, selectedTab, quantities, index) { field, value -> quantities[key(product.code, field)] = value.filter { it.isDigit() } } }
+                        itemsIndexed(products) { index, product -> ProductRow(product, selectedTab, quantities, index) { field, value -> quantities[key(product.code, field)] = sanitizeQuantity(value, field.startsWith("carton")) } }
                         item { Spacer(Modifier.height(28.dp)) }
                     }
                 }
@@ -221,17 +221,17 @@ private fun ProductRow(product: ProductLine, tab: SalesTab, quantities: MutableM
                 Text(priceLabel(product, tab), color = Color(0xFF687782), fontSize = 8.sp, maxLines = 1, modifier = Modifier.width(52.dp), textAlign = TextAlign.Start)
             }
         }
-        if (tab != SalesTab.RETAIL) QuantityCell(product.carton != null, quantities[key(product.code, "carton_wholesale")].orEmpty(), Modifier.weight(1f)) { onChange("carton_wholesale", it) }
-        if (tab != SalesTab.RETAIL) QuantityCell(product.box != null, quantities[key(product.code, "box_wholesale")].orEmpty(), Modifier.weight(1f)) { onChange("box_wholesale", it) }
-        if (tab != SalesTab.WHOLESALE) QuantityCell(product.carton != null, quantities[key(product.code, "carton_retail")].orEmpty(), Modifier.weight(1f)) { onChange("carton_retail", it) }
-        if (tab != SalesTab.WHOLESALE) QuantityCell(product.box != null, quantities[key(product.code, "box_retail")].orEmpty(), Modifier.weight(1f)) { onChange("box_retail", it) }
+        if (tab != SalesTab.RETAIL) QuantityCell(product.carton != null, quantities[key(product.code, "carton_wholesale")].orEmpty(), Modifier.weight(1f), allowDecimal = true) { onChange("carton_wholesale", it) }
+        if (tab != SalesTab.RETAIL) QuantityCell(product.box != null, quantities[key(product.code, "box_wholesale")].orEmpty(), Modifier.weight(1f), allowDecimal = false) { onChange("box_wholesale", it) }
+        if (tab != SalesTab.WHOLESALE) QuantityCell(product.carton != null, quantities[key(product.code, "carton_retail")].orEmpty(), Modifier.weight(1f), allowDecimal = true) { onChange("carton_retail", it) }
+        if (tab != SalesTab.WHOLESALE) QuantityCell(product.box != null, quantities[key(product.code, "box_retail")].orEmpty(), Modifier.weight(1f), allowDecimal = false) { onChange("box_retail", it) }
     }
     HorizontalDivider(color = Color(0xFFD7E2E6))
 }
 
 @Composable
-private fun QuantityCell(enabled: Boolean, value: String, modifier: Modifier, onValueChange: (String) -> Unit) {
-    OutlinedTextField(value = value, onValueChange = onValueChange, enabled = enabled, singleLine = true, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done), textStyle = TextStyle(color = Navy, fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center), contentPadding = PaddingValues(0.dp), modifier = modifier.height(42.dp).padding(horizontal = 2.dp), placeholder = { Text("0", color = Color(0xFF8A969C), fontSize = 12.sp, lineHeight = 18.sp) })
+private fun QuantityCell(enabled: Boolean, value: String, modifier: Modifier, allowDecimal: Boolean, onValueChange: (String) -> Unit) {
+    OutlinedTextField(value = value, onValueChange = onValueChange, enabled = enabled, singleLine = true, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = if (allowDecimal) KeyboardType.Decimal else KeyboardType.Number, imeAction = ImeAction.Done), textStyle = TextStyle(color = Navy, fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center), contentPadding = PaddingValues(0.dp), modifier = modifier.height(42.dp).padding(horizontal = 2.dp), placeholder = { Text("0", color = Color(0xFF8A969C), fontSize = 12.sp, lineHeight = 18.sp) })
 }
 
 private fun priceLabel(product: ProductLine, tab: SalesTab): String {
@@ -260,6 +260,19 @@ private fun HistoryDialog(preferences: android.content.SharedPreferences, close:
 
 private fun key(code: String, field: String) = "$code:$field"
 private fun amount(value: String?): Double = value?.toDoubleOrNull() ?: 0.0
+private fun sanitizeQuantity(value: String, allowDecimal: Boolean): String {
+    if (!allowDecimal) return value.filter { it.isDigit() }
+    val normalized = value.replace(',', '.')
+    val result = StringBuilder()
+    var decimalSeen = false
+    normalized.forEach { char ->
+        when {
+            char.isDigit() -> result.append(char)
+            char == '.' && !decimalSeen -> { result.append(char); decimalSeen = true }
+        }
+    }
+    return result.toString()
+}
 private fun formatMoney(value: Double): String = String.format(Locale.US, "%,.0f", value)
 private fun dateLabel(key: String): String = runCatching { SimpleDateFormat("dd/MM/yyyy", Locale.US).format(SimpleDateFormat("yyyyMMdd", Locale.US).parse(key)!!) }.getOrDefault(key)
 
