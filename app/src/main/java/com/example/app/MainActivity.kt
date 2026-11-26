@@ -209,7 +209,7 @@ private fun TableHeader(tab: SalesTab) {
 private fun ProductRow(product: ProductLine, tab: SalesTab, quantities: MutableMap<String, String>, onChange: (String, String) -> Unit) {
     val rowColor = if (product.code.hashCode() % 2 == 0) Color.White else RowAlt
     Row(Modifier.fillMaxWidth().background(rowColor).padding(vertical = 5.dp, horizontal = 3.dp), verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.weight(1.55f).padding(horizontal = 3.dp), horizontalAlignment = Alignment.End) {
+        Column(Modifier.weight(1.55f).padding(start = 7.dp, end = 3.dp), horizontalAlignment = Alignment.End) {
             Text(product.name, color = Navy, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1)
             Text(priceLabel(product, tab), color = Color(0xFF687782), fontSize = 8.sp, lineHeight = 9.sp, maxLines = 1)
         }
@@ -223,7 +223,7 @@ private fun ProductRow(product: ProductLine, tab: SalesTab, quantities: MutableM
 
 @Composable
 private fun QuantityCell(enabled: Boolean, value: String, modifier: Modifier, onValueChange: (String) -> Unit) {
-    OutlinedTextField(value = value, onValueChange = onValueChange, enabled = enabled, singleLine = true, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done), textStyle = TextStyle(fontSize = 13.sp, textAlign = TextAlign.Center), modifier = modifier.padding(horizontal = 2.dp), placeholder = { Text("0", fontSize = 12.sp) })
+    OutlinedTextField(value = value, onValueChange = onValueChange, enabled = enabled, singleLine = true, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done), textStyle = TextStyle(fontSize = 13.sp, textAlign = TextAlign.Center), modifier = modifier.height(42.dp).padding(horizontal = 2.dp), placeholder = { Text("0", fontSize = 12.sp) })
 }
 
 private fun priceLabel(product: ProductLine, tab: SalesTab): String {
