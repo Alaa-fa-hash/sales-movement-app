@@ -231,7 +231,28 @@ private fun ProductRow(product: ProductLine, tab: SalesTab, quantities: MutableM
 
 @Composable
 private fun QuantityCell(enabled: Boolean, value: String, modifier: Modifier, allowDecimal: Boolean, onValueChange: (String) -> Unit) {
-    OutlinedTextField(value = value, onValueChange = onValueChange, enabled = enabled, singleLine = true, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = if (allowDecimal) KeyboardType.Decimal else KeyboardType.Number, imeAction = ImeAction.Done), textStyle = TextStyle(color = Navy, fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center), contentPadding = PaddingValues(0.dp), modifier = modifier.height(42.dp).padding(horizontal = 2.dp), placeholder = { Text("0", color = Color(0xFF8A969C), fontSize = 12.sp, lineHeight = 18.sp) })
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        enabled = enabled,
+        singleLine = true,
+        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+            keyboardType = if (allowDecimal) KeyboardType.Decimal else KeyboardType.Number,
+            imeAction = ImeAction.Done,
+        ),
+        // Match the line box to the fixed field height so entered values are
+        // centered vertically instead of being clipped at the bottom.
+        textStyle = TextStyle(
+            color = Navy,
+            fontSize = 13.sp,
+            lineHeight = 42.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+        ),
+        contentPadding = PaddingValues(0.dp),
+        modifier = modifier.height(42.dp).padding(horizontal = 2.dp),
+        placeholder = { Text("0", color = Color(0xFF8A969C), fontSize = 12.sp, lineHeight = 42.sp) },
+    )
 }
 
 private fun priceLabel(product: ProductLine, tab: SalesTab): String {
@@ -364,9 +385,12 @@ private fun exportXlsx(context: Context, uri: android.net.Uri, date: String, cat
         val retailValue = kotlin.math.round(quantities[2] * (p.carton?.retailPrice ?: 0.0) + quantities[3] * (p.box?.retailPrice ?: 0.0))
         wholesaleTotal += wholesaleValue
         retailTotal += retailValue
-        val dataIndex = excelRow - 1
-        val textStyle = if (dataIndex % 2 == 1) altStyle else bodyStyle
-        val numericStyle = if (dataIndex % 2 == 1) altNumberStyle else bodyNumberStyle
+        // Keep the same stable zebra pattern as the in-app table: the first
+        // visible data row is white, followed by the light teal row.
+        val visibleRowIndex = excelRow - 2
+        val isAlternateRow = visibleRowIndex % 2 == 1
+        val textStyle = if (isAlternateRow) altStyle else bodyStyle
+        val numericStyle = if (isAlternateRow) altNumberStyle else bodyNumberStyle
         row.getCell(0).cellStyle = textStyle
         row.createCell(1).apply { setCellValue(p.name); cellStyle = textStyle }
         quantities.forEachIndexed { i, value -> row.createCell(i + 2).apply { setCellValue(value); cellStyle = numericStyle } }
