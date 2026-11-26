@@ -63,11 +63,11 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-private val Teal = Color(0xFF1196A7)
-private val Navy = Color(0xFF10283D)
+private val Teal = Color(0xFF1699A8)
+private val Navy = Color(0xFF0B6672)
 private val Page = Color(0xFFF7F3EA)
-private val RowAlt = Color(0xFFF4F7F8)
-private val Green = Color(0xFF2E7D50)
+private val RowAlt = Color(0xFFE4F5F6)
+private val Green = Color(0xFF197D83)
 
 private data class ProductLine(val code: String, val name: String, val carton: MaterialCatalog?, val box: MaterialCatalog?)
 private data class Totals(val wholesale: Double, val retail: Double, val revenue: Double)
@@ -295,9 +295,9 @@ private fun exportXlsx(context: Context, uri: android.net.Uri, date: String, cat
     }
     val headerStyle = makeStyle(IndexedColors.DARK_TEAL, bold = true)
     val bodyStyle = makeStyle(IndexedColors.WHITE)
-    val altStyle = makeStyle(IndexedColors.GREY_25_PERCENT)
+    val altStyle = makeStyle(IndexedColors.LIGHT_TURQUOISE)
     val bodyNumberStyle = makeStyle(IndexedColors.WHITE, numeric = true)
-    val altNumberStyle = makeStyle(IndexedColors.GREY_25_PERCENT, numeric = true)
+    val altNumberStyle = makeStyle(IndexedColors.LIGHT_TURQUOISE, numeric = true)
     val totalStyle = makeStyle(IndexedColors.LIGHT_TURQUOISE, bold = true, numeric = true)
     val header = sheet.createRow(0)
     header.heightInPoints = 26f
