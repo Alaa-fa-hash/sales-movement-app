@@ -222,15 +222,6 @@ private fun ProductRow(product: ProductLine, tab: SalesTab, quantities: MutableM
         Column(Modifier.weight(1.55f).padding(start = 7.dp, end = 3.dp), horizontalAlignment = Alignment.End) {
             if (tab == SalesTab.TOTAL) {
                 Text(product.name, color = Navy, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.End)
-                Text(
-                    "ج ${priceOnly(product.carton?.wholesalePrice, product.box?.wholesalePrice)}  م ${priceOnly(product.carton?.retailPrice, product.box?.retailPrice)}",
-                    color = Color(0xFF687782),
-                    fontSize = 8.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    modifier = Modifier.fillMaxWidth(),
-                    textAlign = TextAlign.End,
-                )
             } else {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Text(product.name, color = Navy, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
@@ -289,9 +280,6 @@ private fun priceLabel(product: ProductLine, tab: SalesTab): String {
         SalesTab.TOTAL -> "ج${price(product.carton?.wholesalePrice)} م${price(product.carton?.retailPrice)}"
     }
 }
-
-private fun priceOnly(carton: Double?, box: Double?): String =
-    listOfNotNull(carton, box).joinToString("/") { formatMoney(it) }.ifBlank { "—" }
 
 @Composable
 private fun HistoryDialog(preferences: android.content.SharedPreferences, close: () -> Unit) {
