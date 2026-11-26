@@ -25,11 +25,12 @@ class MaterialCatalogReader(private val contentResolver: ContentResolver) {
             if (!iterator.hasNext()) return emptyList()
             val headerRow = iterator.next()
             val headers = headerRow.asSequence().associate { normalize(cellText(it, formatter)) to it.columnIndex }
-            val required = listOf("رمز المادة", "اسم المادة", "الوحدة", "سعر التكلفة", "سعر الجملة", "سعر المفرق")
+            val required = listOf("رمز المادة", "اسم المادة", "الوحدة", "سعر الجملة", "سعر المفرق")
             val missing = required.filter { normalize(it) !in headers }
             if (missing.isNotEmpty()) throw IllegalArgumentException("أعمدة دليل المواد الناقصة: ${missing.joinToString("، ")}")
 
             fun value(row: Row, header: String): String = cellText(row.getCell(headers.getValue(normalize(header))), formatter)
+            fun optionalValue(row: Row, header: String): String = headers[normalize(header)]?.let { cellText(row.getCell(it), formatter) }.orEmpty()
             return buildList {
                 while (iterator.hasNext()) {
                     val row = iterator.next()
@@ -37,7 +38,7 @@ class MaterialCatalogReader(private val contentResolver: ContentResolver) {
                     val name = value(row, "اسم المادة").trim()
                     val unit = MaterialUnit.from(value(row, "الوحدة"))
                     if (code.isBlank() || name.isBlank() || unit == MaterialUnit.OTHER) continue
-                    add(MaterialCatalog(code, name, unit, parsePrice(value(row, "سعر التكلفة")), parsePrice(value(row, "سعر الجملة")), parsePrice(value(row, "سعر المفرق"))))
+                    add(MaterialCatalog(code, name, unit, parsePrice(optionalValue(row, "سعر التكلفة")), parsePrice(value(row, "سعر الجملة")), parsePrice(value(row, "سعر المفرق"))))
                 }
             }
         }

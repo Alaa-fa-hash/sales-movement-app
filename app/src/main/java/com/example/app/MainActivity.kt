@@ -60,7 +60,7 @@ private val Green = Color(0xFF2E7D50)
 private val Amber = Color(0xFF9A6900)
 
 private data class ProductLine(val code: String, val name: String, val carton: MaterialCatalog?, val box: MaterialCatalog?)
-private data class Totals(val wholesale: Double, val retail: Double, val revenue: Double, val cost: Double, val profit: Double, val missingCost: Int)
+private data class Totals(val wholesale: Double, val retail: Double, val revenue: Double, val commission: Double)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -107,11 +107,10 @@ private fun SalesMovementApp() {
                     onClear = { quantities.clear(); message = "تم تصفير إدخالات اليوم" },
                 )
                 if (message.isNotBlank()) Text(message, color = Green, fontSize = 14.sp, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
-                if (totals.missingCost > 0) Text("سعر التكلفة ناقص لـ ${totals.missingCost} وحدة؛ الربح الحالي غير مكتمل.", color = Amber, fontSize = 13.sp, modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp))
                 if (products.isEmpty()) EmptyState() else {
                     TableHeader()
                     LazyColumn(Modifier.fillMaxSize().padding(horizontal = 10.dp)) {
-                        items(products) { product -> ProductRow(product, quantities) { field, value -> quantities[key(product.code, field)] = value.filter { it.isDigit() || it == '.' } } }
+                        items(products) { product -> ProductRow(product, quantities) { field, value -> quantities[key(product.code, field)] = value.filter { it.isDigit() } } }
                         item { Spacer(Modifier.height(28.dp)) }
                     }
                 }
@@ -140,9 +139,8 @@ private fun SummaryBar(t: Totals) {
             }
             HorizontalDivider(Modifier.padding(vertical = 8.dp), color = Color(0xFFD7E2E6))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                SummaryCell("التكلفة", t.cost)
-                SummaryCell("الربح", t.profit, Green)
-                SummaryCell("نسبة الربح", if (t.revenue == 0.0) 0.0 else t.profit / t.revenue * 100.0, Green, "%")
+                SummaryCell("العمولة", t.commission, Green)
+                SummaryCell("نسبة العمولة", if (t.revenue == 0.0) 0.0 else t.commission / t.revenue * 100.0, Green, "%")
             }
         }
     }
@@ -218,7 +216,7 @@ private fun HistoryDialog(preferences: android.content.SharedPreferences, close:
             val parts = preferences.getString("summary_$day", "0|0|0").orEmpty().split('|')
             Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(day, color = Navy, fontWeight = FontWeight.Bold)
-                Text("مبيع ${parts.getOrNull(0) ?: "0"} — ربح ${parts.getOrNull(2) ?: "0"}", color = Green)
+                Text("مبيع ${parts.getOrNull(0) ?: "0"} — عمولة ${parts.getOrNull(1) ?: "0"}", color = Green)
             }
             HorizontalDivider()
         } }
@@ -227,10 +225,10 @@ private fun HistoryDialog(preferences: android.content.SharedPreferences, close:
 
 private fun key(code: String, field: String) = "$code:$field"
 private fun amount(value: String?): Double = value?.toDoubleOrNull() ?: 0.0
-private fun formatMoney(value: Double): String = String.format(Locale.US, "%,.2f", value)
+private fun formatMoney(value: Double): String = String.format(Locale.US, "%,.0f", value)
 
 private fun calculateTotals(products: List<ProductLine>, q: Map<String, String>): Totals {
-    var wholesale = 0.0; var retail = 0.0; var revenue = 0.0; var cost = 0.0; var missing = 0
+    var wholesale = 0.0; var retail = 0.0
     products.forEach { p ->
         val entries: List<Pair<Double, MaterialCatalog?>> = listOf(
             Pair(amount(q[key(p.code, "carton_wholesale")]), p.carton),
@@ -240,14 +238,13 @@ private fun calculateTotals(products: List<ProductLine>, q: Map<String, String>)
         )
         entries.forEachIndexed { index, (qty, item) ->
             val price = if (index < 2) item?.wholesalePrice else item?.retailPrice
-            val value = qty * (price ?: 0.0)
+            val value = kotlin.math.round(qty * (price ?: 0.0))
             if (index < 2) wholesale += value else retail += value
             revenue += value
-            val costPrice = item?.costPrice
-            if (qty > 0 && costPrice != null) cost += qty * costPrice else if (qty > 0) missing++
         }
     }
-    return Totals(wholesale, retail, revenue, cost, revenue - cost, missing)
+    val commission = kotlin.math.round(wholesale * 0.10) + kotlin.math.round(retail * 0.025)
+    return Totals(wholesale, retail, wholesale + retail, commission)
 }
 
 private fun saveCatalog(p: android.content.SharedPreferences, items: List<MaterialCatalog>) = p.edit().putString("catalog", items.joinToString("\n") { listOf(it.code, it.name, it.unit.label, it.costPrice ?: "", it.wholesalePrice ?: "", it.retailPrice ?: "").joinToString("|") }).apply()
@@ -256,7 +253,7 @@ private fun loadCatalog(p: android.content.SharedPreferences): List<MaterialCata
     val unit = MaterialUnit.from(a[2]); if (unit == MaterialUnit.OTHER) return@mapNotNull null
     MaterialCatalog(a[0], a[1], unit, a[3].toDoubleOrNull(), a[4].toDoubleOrNull(), a[5].toDoubleOrNull())
 }.toList()
-private fun saveDay(p: android.content.SharedPreferences, day: String, q: Map<String, String>, t: Totals) { p.edit().putString("day_$day", q.entries.joinToString("\n") { "${it.key}=${it.value}" }).putString("summary_$day", "${t.revenue}|${t.cost}|${t.profit}").putStringSet("saved_days", p.getStringSet("saved_days", emptySet()).orEmpty() + day).apply() }
+private fun saveDay(p: android.content.SharedPreferences, day: String, q: Map<String, String>, t: Totals) { p.edit().putString("day_$day", q.entries.joinToString("\n") { "${it.key}=${it.value}" }).putString("summary_$day", "${t.revenue}|${t.commission}").putStringSet("saved_days", p.getStringSet("saved_days", emptySet()).orEmpty() + day).apply() }
 private fun loadDay(p: android.content.SharedPreferences, day: String): Map<String, String> = p.getString("day_$day", "").orEmpty().lineSequence().mapNotNull { line -> line.split('=', limit = 2).takeIf { it.size == 2 }?.let { it[0] to it[1] } }.toMap()
 
 private fun exportXlsx(context: Context, uri: android.net.Uri, date: String, catalog: List<MaterialCatalog>, q: Map<String, String>) {
@@ -264,7 +261,7 @@ private fun exportXlsx(context: Context, uri: android.net.Uri, date: String, cat
     val workbook = XSSFWorkbook()
     val sheet = workbook.createSheet("مبيعات $date")
     sheet.setRightToLeft(true)
-    val headers = listOf("رمز المادة", "المادة", "جملة طرد", "جملة علبة", "مفرق طرد", "مفرق علبة", "قيمة المبيعات")
+    val headers = listOf("رمز المادة", "المادة", "جملة طرد", "جملة علبة", "مفرق طرد", "مفرق علبة", "قيمة الجملة", "عمولة الجملة", "قيمة المفرق", "عمولة المفرق", "إجمالي المبيعات", "إجمالي العمولة")
     headers.forEachIndexed { i, h -> sheet.createRow(0).createCell(i).setCellValue(h) }
     products.forEachIndexed { index, p ->
         val row = sheet.createRow(index + 1)
@@ -272,8 +269,14 @@ private fun exportXlsx(context: Context, uri: android.net.Uri, date: String, cat
         row.createCell(1).setCellValue(p.name)
         val quantities = listOf("carton_wholesale", "box_wholesale", "carton_retail", "box_retail").map { amount(q[key(p.code, it)]) }
         quantities.forEachIndexed { i, value -> row.createCell(i + 2).setCellValue(value) }
-        val total = quantities[0] * (p.carton?.wholesalePrice ?: 0.0) + quantities[1] * (p.box?.wholesalePrice ?: 0.0) + quantities[2] * (p.carton?.retailPrice ?: 0.0) + quantities[3] * (p.box?.retailPrice ?: 0.0)
-        row.createCell(6).setCellValue(total)
+        val wholesaleValue = kotlin.math.round(quantities[0] * (p.carton?.wholesalePrice ?: 0.0) + quantities[1] * (p.box?.wholesalePrice ?: 0.0))
+        val retailValue = kotlin.math.round(quantities[2] * (p.carton?.retailPrice ?: 0.0) + quantities[3] * (p.box?.retailPrice ?: 0.0))
+        row.createCell(6).setCellValue(wholesaleValue)
+        row.createCell(7).setCellValue(kotlin.math.round(wholesaleValue * 0.10))
+        row.createCell(8).setCellValue(retailValue)
+        row.createCell(9).setCellValue(kotlin.math.round(retailValue * 0.025))
+        row.createCell(10).setCellValue(wholesaleValue + retailValue)
+        row.createCell(11).setCellValue(kotlin.math.round(wholesaleValue * 0.10) + kotlin.math.round(retailValue * 0.025))
     }
     context.contentResolver.openOutputStream(uri)?.use { workbook.write(it) } ?: error("تعذر إنشاء ملف Excel")
     workbook.close()
