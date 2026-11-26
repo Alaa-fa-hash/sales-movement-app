@@ -166,13 +166,13 @@ private fun SummaryCell(label: String, value: Double, color: Color = Navy, suffi
 
 @Composable
 private fun Actions(onImport: () -> Unit, onSave: () -> Unit, onExport: () -> Unit, onExportHistory: () -> Unit, onHistory: () -> Unit, onClear: () -> Unit) {
-    Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        Button(onClick = onImport, colors = ButtonDefaults.buttonColors(containerColor = Teal), modifier = Modifier.weight(1f)) { Text("دليل") }
-        Button(onClick = onSave, colors = ButtonDefaults.buttonColors(containerColor = Green), modifier = Modifier.weight(1f)) { Text("حفظ اليوم") }
-        OutlinedButton(onClick = onExport, modifier = Modifier.weight(1f)) { Text("Excel") }
-        TextButton(onClick = onHistory, modifier = Modifier.weight(1f)) { Text("السجل") }
+    Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+        Button(onClick = onImport, colors = ButtonDefaults.buttonColors(containerColor = Teal), contentPadding = ButtonDefaults.TextButtonContentPadding, modifier = Modifier.weight(1f).height(40.dp)) { Text("دليل", fontSize = 12.sp, maxLines = 1) }
+        Button(onClick = onSave, colors = ButtonDefaults.buttonColors(containerColor = Green), contentPadding = ButtonDefaults.TextButtonContentPadding, modifier = Modifier.weight(1f).height(40.dp)) { Text("حفظ اليوم", fontSize = 11.sp, maxLines = 1) }
+        OutlinedButton(onClick = onExport, contentPadding = ButtonDefaults.TextButtonContentPadding, modifier = Modifier.weight(1f).height(40.dp)) { Text("Excel", fontSize = 12.sp, maxLines = 1) }
+        TextButton(onClick = onHistory, contentPadding = ButtonDefaults.TextButtonContentPadding, modifier = Modifier.weight(1f).height(40.dp)) { Text("السجل", fontSize = 12.sp, maxLines = 1) }
     }
-    OutlinedButton(onClick = onExportHistory, modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp).height(38.dp)) { Text("تصدير سجل Excel") }
+    OutlinedButton(onClick = onExportHistory, contentPadding = ButtonDefaults.TextButtonContentPadding, modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp).height(34.dp)) { Text("تصدير سجل Excel", fontSize = 12.sp, maxLines = 1) }
     TextButton(onClick = onClear, modifier = Modifier.fillMaxWidth().height(32.dp)) { Text("تصفير الإدخالات", fontSize = 12.sp) }
 }
 
