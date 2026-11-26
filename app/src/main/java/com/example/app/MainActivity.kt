@@ -350,6 +350,7 @@ private fun priceLabel(product: ProductLine, tab: SalesTab): String {
         SalesTab.WHOLESALE -> "${price(product.carton?.wholesalePrice)}/${price(product.box?.wholesalePrice)}"
         SalesTab.RETAIL -> "${price(product.carton?.retailPrice)}/${price(product.box?.retailPrice)}"
         SalesTab.TOTAL -> "ج${price(product.carton?.wholesalePrice)} م${price(product.carton?.retailPrice)}"
+        SalesTab.SPECIAL -> ""
     }
 }
 
