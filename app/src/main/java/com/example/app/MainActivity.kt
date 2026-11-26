@@ -107,7 +107,7 @@ private fun SalesMovementApp() {
                 Actions(
                     onImport = { launcher.launch(arrayOf("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/vnd.ms-excel")) },
                     onSave = { saveDay(preferences, dateKey, quantities, totals); message = "تم حفظ مبيعات $date" },
-                    onExport = { exporter.launch("مبيعات-$date.xlsx") },
+                    onExport = { exporter.launch("مبيعات-${date.replace('/', '-')}.xlsx") },
                     onHistory = { historyOpen = true },
                     onClear = { quantities.clear(); message = "تم تصفير إدخالات اليوم" },
                 )
@@ -263,7 +263,7 @@ private fun loadDay(p: android.content.SharedPreferences, day: String): Map<Stri
 private fun exportXlsx(context: Context, uri: android.net.Uri, date: String, catalog: List<MaterialCatalog>, q: Map<String, String>) {
     val products = catalog.groupBy { it.code }.map { (code, items) -> ProductLine(code, items.first().name, items.firstOrNull { it.unit == MaterialUnit.CARTON }, items.firstOrNull { it.unit == MaterialUnit.BOX }) }.sortedBy { it.code }
     val workbook = XSSFWorkbook()
-    val sheet = workbook.createSheet("مبيعات $date")
+    val sheet = workbook.createSheet("مبيعات ${date.replace('/', '-')}")
     sheet.setRightToLeft(true)
     val headers = listOf("رمز المادة", "المادة", "جملة طرد", "جملة علبة", "مفرق طرد", "مفرق علبة", "قيمة الجملة", "قيمة المفرق", "إجمالي المبيعات")
     headers.forEachIndexed { i, h -> sheet.createRow(0).createCell(i).setCellValue(h) }
