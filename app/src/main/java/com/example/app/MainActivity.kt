@@ -7,6 +7,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -21,6 +22,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -31,6 +33,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
@@ -49,6 +52,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -218,7 +222,14 @@ private fun ProductRow(product: ProductLine, tab: SalesTab, quantities: MutableM
         Column(Modifier.weight(1.55f).padding(start = 7.dp, end = 3.dp), horizontalAlignment = Alignment.End) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(product.name, color = Navy, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
-                Text(priceLabel(product, tab), color = Color(0xFF687782), fontSize = 10.sp, fontWeight = FontWeight.Bold, maxLines = 1, modifier = Modifier.width(60.dp), textAlign = TextAlign.Start)
+                if (tab == SalesTab.TOTAL) {
+                    Column(modifier = Modifier.width(72.dp), horizontalAlignment = Alignment.Start) {
+                        Text("ج ${priceOnly(product.carton?.wholesalePrice, product.box?.wholesalePrice)}", color = Color(0xFF687782), fontSize = 9.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                        Text("م ${priceOnly(product.carton?.retailPrice, product.box?.retailPrice)}", color = Color(0xFF687782), fontSize = 9.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                    }
+                } else {
+                    Text(priceLabel(product, tab), color = Color(0xFF687782), fontSize = 10.sp, fontWeight = FontWeight.Bold, maxLines = 1, modifier = Modifier.width(60.dp), textAlign = TextAlign.Start)
+                }
             }
         }
         if (tab != SalesTab.RETAIL) QuantityCell(product.carton != null, quantities[key(product.code, "carton_wholesale")].orEmpty(), Modifier.weight(1f), allowDecimal = true) { onChange("carton_wholesale", it) }
@@ -231,7 +242,8 @@ private fun ProductRow(product: ProductLine, tab: SalesTab, quantities: MutableM
 
 @Composable
 private fun QuantityCell(enabled: Boolean, value: String, modifier: Modifier, allowDecimal: Boolean, onValueChange: (String) -> Unit) {
-    OutlinedTextField(
+    val interactionSource = remember { MutableInteractionSource() }
+    BasicTextField(
         value = value,
         onValueChange = onValueChange,
         enabled = enabled,
@@ -240,17 +252,26 @@ private fun QuantityCell(enabled: Boolean, value: String, modifier: Modifier, al
             keyboardType = if (allowDecimal) KeyboardType.Decimal else KeyboardType.Number,
             imeAction = ImeAction.Done,
         ),
-        // Match the line box to the fixed field height so entered values are
-        // centered vertically instead of being clipped at the bottom.
         textStyle = TextStyle(
             color = Navy,
             fontSize = 13.sp,
-            lineHeight = 42.sp,
+            lineHeight = 18.sp,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
         ),
         modifier = modifier.height(42.dp).padding(horizontal = 2.dp),
-        placeholder = { Text("0", color = Color(0xFF8A969C), fontSize = 12.sp, lineHeight = 42.sp) },
+        decorationBox = { innerTextField ->
+            OutlinedTextFieldDefaults.DecorationBox(
+                value = value,
+                innerTextField = innerTextField,
+                enabled = enabled,
+                singleLine = true,
+                visualTransformation = VisualTransformation.None,
+                interactionSource = interactionSource,
+                placeholder = { Text("0", color = Color(0xFF8A969C), fontSize = 12.sp, lineHeight = 18.sp) },
+                contentPadding = PaddingValues(0.dp),
+            )
+        },
     )
 }
 
@@ -262,6 +283,9 @@ private fun priceLabel(product: ProductLine, tab: SalesTab): String {
         SalesTab.TOTAL -> "ج${price(product.carton?.wholesalePrice)} م${price(product.carton?.retailPrice)}"
     }
 }
+
+private fun priceOnly(carton: Double?, box: Double?): String =
+    listOfNotNull(carton, box).joinToString("/") { formatMoney(it) }.ifBlank { "—" }
 
 @Composable
 private fun HistoryDialog(preferences: android.content.SharedPreferences, close: () -> Unit) {
@@ -341,6 +365,7 @@ private fun loadDay(p: android.content.SharedPreferences, day: String): Map<Stri
 private fun exportXlsx(context: Context, uri: android.net.Uri, date: String, catalog: List<MaterialCatalog>, q: Map<String, String>) {
     val products = buildProducts(catalog)
     val workbook = XSSFWorkbook()
+    workbook.setForceFormulaRecalculation(true)
     val sheet = workbook.createSheet("مبيعات ${date.replace('/', '-')}")
     sheet.setRightToLeft(true)
     val headers = listOf("رمز المادة", "المادة", "جملة طرد", "جملة علبة", "مفرق طرد", "مفرق علبة", "قيمة الجملة", "قيمة المفرق", "إجمالي المبيعات")
@@ -372,18 +397,13 @@ private fun exportXlsx(context: Context, uri: android.net.Uri, date: String, cat
     header.heightInPoints = 26f
     headers.forEachIndexed { i, h -> header.createCell(i).apply { setCellValue(h); cellStyle = headerStyle } }
     var excelRow = 1
-    var wholesaleTotal = 0.0
-    var retailTotal = 0.0
     products.forEach { p ->
         val quantities = listOf("carton_wholesale", "box_wholesale", "carton_retail", "box_retail").map { amount(q[key(p.code, it)]) }
         if (quantities.all { it == 0.0 }) return@forEach
         val row = sheet.createRow(excelRow++)
+        val excelNumber = excelRow + 1
         row.createCell(0).setCellValue(p.code)
         row.createCell(1).setCellValue(p.name)
-        val wholesaleValue = kotlin.math.round(quantities[0] * (p.carton?.wholesalePrice ?: 0.0) + quantities[1] * (p.box?.wholesalePrice ?: 0.0))
-        val retailValue = kotlin.math.round(quantities[2] * (p.carton?.retailPrice ?: 0.0) + quantities[3] * (p.box?.retailPrice ?: 0.0))
-        wholesaleTotal += wholesaleValue
-        retailTotal += retailValue
         // Keep the same stable zebra pattern as the in-app table: the first
         // visible data row is white, followed by the light teal row.
         val visibleRowIndex = excelRow - 2
@@ -393,17 +413,23 @@ private fun exportXlsx(context: Context, uri: android.net.Uri, date: String, cat
         row.getCell(0).cellStyle = textStyle
         row.createCell(1).apply { setCellValue(p.name); cellStyle = textStyle }
         quantities.forEachIndexed { i, value -> row.createCell(i + 2).apply { setCellValue(value); cellStyle = numericStyle } }
-        row.createCell(6).apply { setCellValue(wholesaleValue); cellStyle = numericStyle }
-        row.createCell(7).apply { setCellValue(retailValue); cellStyle = numericStyle }
-        row.createCell(8).apply { setCellValue(wholesaleValue + retailValue); cellStyle = numericStyle }
+        val cartonWholesalePrice = p.carton?.wholesalePrice ?: 0.0
+        val boxWholesalePrice = p.box?.wholesalePrice ?: 0.0
+        val cartonRetailPrice = p.carton?.retailPrice ?: 0.0
+        val boxRetailPrice = p.box?.retailPrice ?: 0.0
+        row.createCell(6).apply { setCellFormula("=C$excelNumber*${cartonWholesalePrice}+D$excelNumber*${boxWholesalePrice}"); cellStyle = numericStyle }
+        row.createCell(7).apply { setCellFormula("=E$excelNumber*${cartonRetailPrice}+F$excelNumber*${boxRetailPrice}"); cellStyle = numericStyle }
+        row.createCell(8).apply { setCellFormula("=G$excelNumber+H$excelNumber"); cellStyle = numericStyle }
     }
     val total = sheet.createRow(excelRow)
     total.createCell(0).apply { setCellValue("الإجمالي"); cellStyle = totalStyle }
     total.createCell(1).cellStyle = totalStyle
-    for (i in 2..5) total.createCell(i).apply { setCellValue(quantitiesTotal(products, q, i - 2)); cellStyle = totalStyle }
-    total.createCell(6).apply { setCellValue(wholesaleTotal); cellStyle = totalStyle }
-    total.createCell(7).apply { setCellValue(retailTotal); cellStyle = totalStyle }
-    total.createCell(8).apply { setCellValue(wholesaleTotal + retailTotal); cellStyle = totalStyle }
+    val lastDataRow = excelRow
+    for (i in 2..8) total.createCell(i).apply {
+        val column = ('A'.code + i).toChar()
+        setCellFormula(if (lastDataRow >= 2) "=SUM(${column}2:${column}$lastDataRow)" else "=0")
+        cellStyle = totalStyle
+    }
     sheet.createFreezePane(0, 1)
     sheet.setAutoFilter(CellRangeAddress(0, excelRow, 0, 8))
     listOf(14, 26, 12, 12, 12, 12, 16, 16, 18).forEachIndexed { i, width -> sheet.setColumnWidth(i, width * 256) }
@@ -415,17 +441,56 @@ private fun quantitiesTotal(products: List<ProductLine>, q: Map<String, String>,
 
 private fun exportHistoryXlsx(context: Context, uri: android.net.Uri, preferences: android.content.SharedPreferences) {
     val workbook = XSSFWorkbook()
+    workbook.setForceFormulaRecalculation(true)
     val sheet = workbook.createSheet("سجل المبيعات")
     sheet.setRightToLeft(true)
-    sheet.createRow(0).apply {
-        createCell(0).setCellValue("التاريخ")
-        createCell(1).setCellValue("إجمالي المبيعات")
+    val numberFormat = workbook.createDataFormat().getFormat("#,##0")
+    fun rgb(hex: String): XSSFColor = XSSFColor(hex.chunked(2).map { it.toInt(16).toByte() }.toByteArray(), null)
+    fun makeStyle(fill: XSSFColor, bold: Boolean = false, numeric: Boolean = false, whiteText: Boolean = false): XSSFCellStyle = workbook.createCellStyle().apply {
+        setFillForegroundColor(fill)
+        setFillPattern(FillPatternType.SOLID_FOREGROUND)
+        setAlignment(HorizontalAlignment.CENTER)
+        setVerticalAlignment(VerticalAlignment.CENTER)
+        setBorderLeft(BorderStyle.THIN)
+        setBorderRight(BorderStyle.THIN)
+        setBorderTop(BorderStyle.THIN)
+        setBorderBottom(BorderStyle.THIN)
+        if (numeric) dataFormat = numberFormat
+        val font = workbook.createFont().apply { this.bold = bold; fontHeightInPoints = if (bold) 11 else 10; color = if (whiteText) IndexedColors.WHITE.index else IndexedColors.BLACK.index }
+        setFont(font)
     }
-    preferences.getStringSet("saved_days", emptySet()).orEmpty().toList().sorted().forEachIndexed { index, day ->
+    val headerStyle = makeStyle(rgb("0B7A8C"), bold = true, whiteText = true)
+    val bodyStyle = makeStyle(rgb("FFFFFF"))
+    val altStyle = makeStyle(rgb("E8F4F6"))
+    val bodyNumberStyle = makeStyle(rgb("FFFFFF"), numeric = true)
+    val altNumberStyle = makeStyle(rgb("E8F4F6"), numeric = true)
+    val totalStyle = makeStyle(rgb("D5ECEF"), bold = true, numeric = true)
+    val header = sheet.createRow(0)
+    header.heightInPoints = 26f
+    listOf("التاريخ", "إجمالي المبيعات").forEachIndexed { index, title ->
+        header.createCell(index).apply { setCellValue(title); cellStyle = headerStyle }
+    }
+    val days = preferences.getStringSet("saved_days", emptySet()).orEmpty().toList().sorted()
+    days.forEachIndexed { index, day ->
         val row = sheet.createRow(index + 1)
-        row.createCell(0).setCellValue(dateLabel(day))
-        row.createCell(1).setCellValue(preferences.getString("summary_$day", "0").orEmpty().split('|').firstOrNull()?.toDoubleOrNull() ?: 0.0)
+        val textStyle = if (index % 2 == 0) bodyStyle else altStyle
+        val numericStyle = if (index % 2 == 0) bodyNumberStyle else altNumberStyle
+        row.createCell(0).apply { setCellValue(dateLabel(day)); cellStyle = textStyle }
+        row.createCell(1).apply {
+            setCellValue(preferences.getString("summary_$day", "0").orEmpty().split('|').firstOrNull()?.toDoubleOrNull() ?: 0.0)
+            cellStyle = numericStyle
+        }
     }
+    val totalRow = sheet.createRow(days.size + 1)
+    totalRow.createCell(0).apply { setCellValue("الإجمالي"); cellStyle = totalStyle }
+    totalRow.createCell(1).apply {
+        setCellFormula(if (days.isEmpty()) "=0" else "=SUM(B2:B${days.size + 1})")
+        cellStyle = totalStyle
+    }
+    sheet.createFreezePane(0, 1)
+    sheet.setAutoFilter(CellRangeAddress(0, days.size + 1, 0, 1))
+    sheet.setColumnWidth(0, 18 * 256)
+    sheet.setColumnWidth(1, 22 * 256)
     context.contentResolver.openOutputStream(uri)?.use { workbook.write(it) } ?: error("تعذر إنشاء ملف سجل Excel")
     workbook.close()
 }
