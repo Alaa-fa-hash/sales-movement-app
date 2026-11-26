@@ -109,7 +109,12 @@ private fun SalesMovementApp() {
     var message by remember { mutableStateOf("") }
     var historyOpen by remember { mutableStateOf(false) }
     var selectedTab by remember { mutableStateOf(SalesTab.TOTAL) }
-    val specialSales = remember { mutableStateListOf(SpecialSaleDraft()) }
+    val specialSales = remember {
+        mutableStateListOf<SpecialSaleDraft>().apply {
+            addAll(loadSpecialSales(preferences, dateKey))
+            if (isEmpty()) add(SpecialSaleDraft())
+        }
+    }
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
         runCatching {
@@ -120,23 +125,25 @@ private fun SalesMovementApp() {
         }.onFailure { message = it.message ?: "فشل قراءة دليل المواد" }
     }
     val exporter = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")) { uri ->
-        if (uri != null) runCatching { exportXlsx(context, uri, date, catalog, quantities) }.onSuccess { message = "تم تصدير Excel" }.onFailure { message = "فشل التصدير: ${it.message}" }
+        if (uri != null) runCatching { exportXlsx(context, uri, date, catalog, quantities, specialSales) }.onSuccess { message = "تم تصدير Excel" }.onFailure { message = "فشل التصدير: ${it.message}" }
     }
     val historyExporter = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")) { uri ->
         if (uri != null) runCatching { exportHistoryXlsx(context, uri, preferences) }.onSuccess { message = "تم تصدير سجل المبيعات" }.onFailure { message = "فشل تصدير السجل: ${it.message}" }
     }
     val products = buildProducts(catalog)
     val totals = calculateTotals(products, quantities)
+    val specialTotal = calculateSpecialTotal(specialSales)
+    val dailyTotals = totals.copy(revenue = totals.revenue + specialTotal)
 
     MaterialTheme {
         Surface(Modifier.fillMaxSize(), color = Page) {
             Column(Modifier.fillMaxSize()) {
                 Header(date)
-                SummaryBar(totals)
+                SummaryBar(dailyTotals)
                 Actions(
                     onImport = { launcher.launch(arrayOf("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/vnd.ms-excel")) },
-                    onSave = { saveDay(preferences, dateKey, quantities, totals); message = "تم حفظ مبيعات $date" },
-                    onExport = { exporter.launch("مبيعات-${date.replace('/', '-')}.xlsx") },
+                    onSave = { saveDay(preferences, dateKey, quantities, dailyTotals, specialSales); message = "تم حفظ مبيعات $date" },
+                        onExport = { exporter.launch("مبيعات-${date.replace('/', '-')}.xlsx") },
                     onExportHistory = { historyExporter.launch("سجل-المبيعات.xlsx") },
                     onHistory = { historyOpen = true },
                     onClear = { quantities.clear(); message = "تم تصفير إدخالات اليوم" },
@@ -426,10 +433,23 @@ private fun loadCatalog(p: android.content.SharedPreferences): List<MaterialCata
     val unit = MaterialUnit.from(a[2]); if (unit == MaterialUnit.OTHER) return@mapNotNull null
     MaterialCatalog(a[0], a[1], unit, a[3].toDoubleOrNull(), a[4].toDoubleOrNull(), a[5].toDoubleOrNull())
 }.toList()
-private fun saveDay(p: android.content.SharedPreferences, day: String, q: Map<String, String>, t: Totals) { p.edit().putString("day_$day", q.entries.joinToString("\n") { "${it.key}=${it.value}" }).putString("summary_$day", "${t.revenue}").putStringSet("saved_days", p.getStringSet("saved_days", emptySet()).orEmpty() + day).apply() }
+private fun saveDay(p: android.content.SharedPreferences, day: String, q: Map<String, String>, t: Totals, specialSales: List<SpecialSaleDraft>) {
+    p.edit()
+        .putString("day_$day", q.entries.joinToString("\n") { "${it.key}=${it.value}" })
+        .putString("special_$day", specialSales.joinToString("\n") { listOf(it.code, it.quantity, it.price).joinToString("|") })
+        .putString("summary_$day", "${t.revenue}")
+        .putStringSet("saved_days", p.getStringSet("saved_days", emptySet()).orEmpty() + day)
+        .apply()
+}
 private fun loadDay(p: android.content.SharedPreferences, day: String): Map<String, String> = p.getString("day_$day", "").orEmpty().lineSequence().mapNotNull { line -> line.split('=', limit = 2).takeIf { it.size == 2 }?.let { it[0] to it[1] } }.toMap()
+private fun loadSpecialSales(p: android.content.SharedPreferences, day: String): List<SpecialSaleDraft> = p.getString("special_$day", "").orEmpty().lineSequence().mapNotNull { line ->
+    val parts = line.split('|')
+    if (parts.size < 3) return@mapNotNull null
+    SpecialSaleDraft().apply { code = parts[0]; quantity = parts[1]; price = parts[2] }
+}.toList()
+private fun calculateSpecialTotal(rows: List<SpecialSaleDraft>): Double = rows.sumOf { amount(it.quantity) * amount(it.price) }
 
-private fun exportXlsx(context: Context, uri: android.net.Uri, date: String, catalog: List<MaterialCatalog>, q: Map<String, String>) {
+private fun exportXlsx(context: Context, uri: android.net.Uri, date: String, catalog: List<MaterialCatalog>, q: Map<String, String>, specialSales: List<SpecialSaleDraft>) {
     val products = buildProducts(catalog)
     val workbook = XSSFWorkbook()
     workbook.setForceFormulaRecalculation(true)
@@ -500,6 +520,36 @@ private fun exportXlsx(context: Context, uri: android.net.Uri, date: String, cat
     sheet.createFreezePane(0, 1)
     sheet.setAutoFilter(CellRangeAddress(0, excelRow, 0, 8))
     listOf(14, 26, 12, 12, 12, 12, 16, 16, 18).forEachIndexed { i, width -> sheet.setColumnWidth(i, width * 256) }
+    val specialSheet = workbook.createSheet("بيع خاص")
+    specialSheet.setRightToLeft(true)
+    val specialHeaders = listOf("رمز المادة", "المادة", "الكمية", "السعر الخاص", "الإجمالي")
+    val specialHeader = specialSheet.createRow(0)
+    specialHeader.heightInPoints = 26f
+    specialHeaders.forEachIndexed { i, title -> specialHeader.createCell(i).apply { setCellValue(title); cellStyle = headerStyle } }
+    val filledSpecialSales = specialSales.filter { it.code.isNotBlank() || it.quantity.isNotBlank() || it.price.isNotBlank() }
+    filledSpecialSales.forEachIndexed { index, sale ->
+        val rowNumber = index + 2
+        val row = specialSheet.createRow(index + 1)
+        val textStyle = if (index % 2 == 0) bodyStyle else altStyle
+        val numericStyle = if (index % 2 == 0) bodyNumberStyle else altNumberStyle
+        val name = catalog.firstOrNull { it.code.trim() == sale.code.trim() }?.name.orEmpty()
+        row.createCell(0).apply { setCellValue(sale.code); cellStyle = textStyle }
+        row.createCell(1).apply { setCellValue(name); cellStyle = textStyle }
+        row.createCell(2).apply { setCellValue(amount(sale.quantity)); cellStyle = numericStyle }
+        row.createCell(3).apply { setCellValue(amount(sale.price)); cellStyle = numericStyle }
+        row.createCell(4).apply { setCellFormula("C$rowNumber*D$rowNumber"); cellStyle = numericStyle }
+    }
+    val specialTotalRow = specialSheet.createRow(filledSpecialSales.size + 1)
+    specialTotalRow.createCell(0).apply { setCellValue("الإجمالي"); cellStyle = totalStyle }
+    specialTotalRow.createCell(1).cellStyle = totalStyle
+    for (i in 2..4) specialTotalRow.createCell(i).apply {
+        val column = ('A'.code + i).toChar()
+        setCellFormula(if (filledSpecialSales.isEmpty()) "0" else "SUM(${column}2:${column}${filledSpecialSales.size + 1})")
+        cellStyle = totalStyle
+    }
+    specialSheet.createFreezePane(0, 1)
+    specialSheet.setAutoFilter(CellRangeAddress(0, filledSpecialSales.size + 1, 0, 4))
+    listOf(16, 28, 14, 16, 16).forEachIndexed { i, width -> specialSheet.setColumnWidth(i, width * 256) }
     val bytes = ByteArrayOutputStream().use { output ->
         workbook.write(output)
         output.toByteArray()
