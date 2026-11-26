@@ -10,7 +10,7 @@ android {
     val releaseKeystore = file("${System.getProperty("user.home")}/.android/release.keystore")
 
     defaultConfig {
-        applicationId = "com.example.warehouse"
+        applicationId = "com.alaa.salesmovement"
         minSdk = 26
         targetSdk = 35
         versionCode = 1
