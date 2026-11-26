@@ -501,7 +501,7 @@ private fun exportXlsx(context: Context, uri: android.net.Uri, date: String, cat
     workbook.setForceFormulaRecalculation(true)
     val sheet = workbook.createSheet("مبيعات ${date.replace('/', '-')}")
     sheet.setRightToLeft(true)
-    val headers = listOf("رمز المادة", "المادة", "جملة طرد", "جملة علبة", "مفرق طرد", "مفرق علبة", "قيمة الجملة", "قيمة المفرق", "إجمالي المبيعات", "خاص كمية", "خاص سعر", "إجمالي الخاص")
+    val headers = listOf("رمز المادة", "المادة", "جملة طرد", "جملة علبة", "مفرق طرد", "مفرق علبة", "قيمة الجملة", "قيمة المفرق", "خاص كمية", "خاص سعر", "إجمالي الخاص", "إجمالي المبيعات")
     val numberFormat = workbook.createDataFormat().getFormat("#,##0")
     fun rgb(hex: String): XSSFColor = XSSFColor(hex.chunked(2).map { it.toInt(16).toByte() }.toByteArray(), null)
     fun makeStyle(fill: XSSFColor, bold: Boolean = false, numeric: Boolean = false, whiteText: Boolean = false): XSSFCellStyle = workbook.createCellStyle().apply {
@@ -552,10 +552,10 @@ private fun exportXlsx(context: Context, uri: android.net.Uri, date: String, cat
         val boxRetailPrice = p.box?.retailPrice ?: 0.0
         row.createCell(6).apply { setCellFormula("C$excelNumber*${cartonWholesalePrice}+D$excelNumber*${boxWholesalePrice}"); cellStyle = numericStyle }
         row.createCell(7).apply { setCellFormula("E$excelNumber*${cartonRetailPrice}+F$excelNumber*${boxRetailPrice}"); cellStyle = numericStyle }
-        row.createCell(8).apply { setCellFormula("G$excelNumber+H$excelNumber+L$excelNumber"); cellStyle = numericStyle }
+        row.createCell(8).cellStyle = numericStyle
         row.createCell(9).cellStyle = numericStyle
         row.createCell(10).cellStyle = numericStyle
-        row.createCell(11).cellStyle = numericStyle
+        row.createCell(11).apply { setCellFormula("G$excelNumber+H$excelNumber+K$excelNumber"); cellStyle = numericStyle }
     }
     val filledSpecialSales = specialSales.filter { it.name.isNotBlank() || it.quantity.isNotBlank() || it.price.isNotBlank() }
     filledSpecialSales.forEachIndexed { index, sale ->
@@ -568,10 +568,10 @@ private fun exportXlsx(context: Context, uri: android.net.Uri, date: String, cat
         row.createCell(0).apply { setCellValue(""); cellStyle = textStyle }
         row.createCell(1).apply { setCellValue(sale.name); cellStyle = textStyle }
         for (i in 2..7) row.createCell(i).apply { setCellValue(0.0); cellStyle = numericStyle }
-        row.createCell(8).apply { setCellFormula("L$rowNumber"); cellStyle = numericStyle }
-        row.createCell(9).apply { setCellValue(amount(sale.quantity)); cellStyle = numericStyle }
-        row.createCell(10).apply { setCellValue(amount(sale.price)); cellStyle = numericStyle }
-        row.createCell(11).apply { setCellFormula("J$rowNumber*K$rowNumber"); cellStyle = numericStyle }
+        row.createCell(8).apply { setCellValue(amount(sale.quantity)); cellStyle = numericStyle }
+        row.createCell(9).apply { setCellValue(amount(sale.price)); cellStyle = numericStyle }
+        row.createCell(10).apply { setCellFormula("I$rowNumber*J$rowNumber"); cellStyle = numericStyle }
+        row.createCell(11).apply { setCellFormula("G$rowNumber+H$rowNumber+K$rowNumber"); cellStyle = numericStyle }
     }
     val total = sheet.createRow(excelRow)
     total.createCell(0).apply { setCellValue("الإجمالي"); cellStyle = totalStyle }
