@@ -534,7 +534,7 @@ private fun exportXlsx(context: Context, uri: android.net.Uri, date: String, cat
         val quantities = listOf("carton_wholesale", "box_wholesale", "carton_retail", "box_retail").map { amount(q[key(p.code, it)]) }
         if (quantities.all { it == 0.0 }) return@forEach
         val row = sheet.createRow(excelRow++)
-        val excelNumber = excelRow
+        val excelNumber = excelRow + 1
         row.createCell(0).setCellValue(p.code)
         row.createCell(1).setCellValue(p.name)
         // Keep the same stable zebra pattern as the in-app table: the first
@@ -560,7 +560,7 @@ private fun exportXlsx(context: Context, uri: android.net.Uri, date: String, cat
     val filledSpecialSales = specialSales.filter { it.name.isNotBlank() || it.quantity.isNotBlank() || it.price.isNotBlank() }
     filledSpecialSales.forEachIndexed { index, sale ->
         val row = sheet.createRow(excelRow++)
-        val rowNumber = excelRow
+        val rowNumber = excelRow + 1
         val visibleRowIndex = excelRow - 2
         val isAlternateRow = visibleRowIndex % 2 == 1
         val textStyle = if (isAlternateRow) altStyle else bodyStyle
