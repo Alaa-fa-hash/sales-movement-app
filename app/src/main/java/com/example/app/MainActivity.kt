@@ -43,6 +43,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -130,16 +132,16 @@ private fun SalesMovementApp() {
 
 @Composable
 private fun Header(date: String) {
-    Column(Modifier.fillMaxWidth().background(Teal).padding(18.dp), horizontalAlignment = Alignment.End) {
-        Text("مبيعاتي اليومية", color = Color.White, fontSize = 27.sp, fontWeight = FontWeight.Bold)
-        Text("الجملة والمفرق — $date", color = Color.White, fontSize = 15.sp)
+    Column(Modifier.fillMaxWidth().background(Teal).padding(horizontal = 14.dp, vertical = 9.dp), horizontalAlignment = Alignment.End) {
+        Text("مبيعاتي اليومية", color = Color.White, fontSize = 23.sp, fontWeight = FontWeight.Bold)
+        Text("الجملة والمفرق — $date", color = Color.White, fontSize = 13.sp)
     }
 }
 
 @Composable
 private fun SummaryBar(t: Totals) {
-    Card(Modifier.fillMaxWidth().padding(12.dp), colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(14.dp)) {
-        Column(Modifier.padding(12.dp)) {
+    Card(Modifier.fillMaxWidth().padding(8.dp), colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(14.dp)) {
+        Column(Modifier.padding(horizontal = 8.dp, vertical = 7.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                 SummaryCell("جملة", t.wholesale)
                 SummaryCell("مفرق", t.retail)
@@ -153,20 +155,20 @@ private fun SummaryBar(t: Totals) {
 @Composable
 private fun SummaryCell(label: String, value: Double, color: Color = Navy, suffix: String = "") {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(label, color = Color(0xFF687782), fontSize = 12.sp)
-        Text(formatMoney(value) + suffix, color = color, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+        Text(label, color = Color(0xFF687782), fontSize = 11.sp)
+        Text(formatMoney(value) + suffix, color = color, fontSize = 15.sp, fontWeight = FontWeight.Bold)
     }
 }
 
 @Composable
 private fun Actions(onImport: () -> Unit, onSave: () -> Unit, onExport: () -> Unit, onHistory: () -> Unit, onClear: () -> Unit) {
-    Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+    Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         Button(onClick = onImport, colors = ButtonDefaults.buttonColors(containerColor = Teal), modifier = Modifier.weight(1f)) { Text("دليل") }
         Button(onClick = onSave, colors = ButtonDefaults.buttonColors(containerColor = Green), modifier = Modifier.weight(1f)) { Text("حفظ اليوم") }
         OutlinedButton(onClick = onExport, modifier = Modifier.weight(1f)) { Text("Excel") }
         TextButton(onClick = onHistory, modifier = Modifier.weight(1f)) { Text("السجل") }
     }
-    TextButton(onClick = onClear, modifier = Modifier.fillMaxWidth()) { Text("تصفير الإدخالات") }
+    TextButton(onClick = onClear, modifier = Modifier.fillMaxWidth().height(32.dp)) { Text("تصفير الإدخالات", fontSize = 12.sp) }
 }
 
 @Composable
@@ -209,7 +211,7 @@ private fun ProductRow(product: ProductLine, tab: SalesTab, quantities: MutableM
 
 @Composable
 private fun QuantityCell(enabled: Boolean, value: String, modifier: Modifier, onValueChange: (String) -> Unit) {
-    OutlinedTextField(value = value, onValueChange = onValueChange, enabled = enabled, singleLine = true, textStyle = TextStyle(fontSize = 13.sp, textAlign = TextAlign.Center), modifier = modifier.padding(horizontal = 2.dp), placeholder = { Text("0", fontSize = 12.sp) })
+    OutlinedTextField(value = value, onValueChange = onValueChange, enabled = enabled, singleLine = true, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done), textStyle = TextStyle(fontSize = 13.sp, textAlign = TextAlign.Center), modifier = modifier.padding(horizontal = 2.dp), placeholder = { Text("0", fontSize = 12.sp) })
 }
 
 @Composable
