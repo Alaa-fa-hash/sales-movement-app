@@ -1,0 +1,7 @@
+Archive: warehouse-movement-app-v0.5.15
+Git tag: v0.5.15
+Git commit: 5916780a9ba8f19893362c27b8c7b8abda9ef6db
+Repository: https://github.com/Alaa-fa-hash/warehouse-movement-app
+Release: https://github.com/Alaa-fa-hash/warehouse-movement-app/releases/tag/v0.5.15
+APK: https://github.com/Alaa-fa-hash/warehouse-movement-app/releases/download/v0.5.15/app-release.apk
+Generated from git archive; .git, .gradle, build outputs, IDE caches, credentials, and temporary files are excluded.
