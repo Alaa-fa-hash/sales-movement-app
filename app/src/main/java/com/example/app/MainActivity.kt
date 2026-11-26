@@ -294,13 +294,13 @@ private fun exportXlsx(context: Context, uri: android.net.Uri, date: String, cat
     val numberFormat = workbook.createDataFormat().getFormat("#,##0")
     fun makeStyle(fill: IndexedColors, bold: Boolean = false, numeric: Boolean = false): XSSFCellStyle = workbook.createCellStyle().apply {
         fillForegroundColor = fill.index
-        fillPattern = FillPatternType.SOLID_FOREGROUND
-        alignment = HorizontalAlignment.CENTER
-        verticalAlignment = VerticalAlignment.CENTER
-        borderLeft = BorderStyle.THIN
-        borderRight = BorderStyle.THIN
-        borderTop = BorderStyle.THIN
-        borderBottom = BorderStyle.THIN
+        setFillPattern(FillPatternType.SOLID_FOREGROUND)
+        setAlignment(HorizontalAlignment.CENTER)
+        setVerticalAlignment(VerticalAlignment.CENTER)
+        setBorderLeft(BorderStyle.THIN)
+        setBorderRight(BorderStyle.THIN)
+        setBorderTop(BorderStyle.THIN)
+        setBorderBottom(BorderStyle.THIN)
         if (numeric) dataFormat = numberFormat
         val font = workbook.createFont().apply { this.bold = bold; fontHeightInPoints = if (bold) 11 else 10; color = if (fill == IndexedColors.DARK_TEAL) IndexedColors.WHITE.index else IndexedColors.BLACK.index }
         setFont(font)
