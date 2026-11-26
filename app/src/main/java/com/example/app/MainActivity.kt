@@ -215,7 +215,7 @@ private fun HistoryDialog(preferences: android.content.SharedPreferences, close:
     val days = preferences.getStringSet("saved_days", emptySet()).orEmpty().toList().sortedDescending()
     AlertDialog(onDismissRequest = close, confirmButton = { TextButton(onClick = close) { Text("إغلاق") } }, title = { Text("سجل الأيام", color = Navy, fontWeight = FontWeight.Bold) }, text = {
         if (days.isEmpty()) Text("لا يوجد أيام محفوظة بعد.") else LazyColumn { items(days) { day ->
-            val parts = preferences.getString("summary_$day", "0|0|0").split('|')
+            val parts = preferences.getString("summary_$day", "0|0|0").orEmpty().split('|')
             Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(day, color = Navy, fontWeight = FontWeight.Bold)
                 Text("مبيع ${parts.getOrNull(0) ?: "0"} — ربح ${parts.getOrNull(2) ?: "0"}", color = Green)
@@ -232,18 +232,19 @@ private fun formatMoney(value: Double): String = String.format(Locale.US, "%,.2f
 private fun calculateTotals(products: List<ProductLine>, q: Map<String, String>): Totals {
     var wholesale = 0.0; var retail = 0.0; var revenue = 0.0; var cost = 0.0; var missing = 0
     products.forEach { p ->
-        val entries = listOf(
-            amount(q[key(p.code, "carton_wholesale"])) to p.carton,
-            amount(q[key(p.code, "box_wholesale"])) to p.box,
-            amount(q[key(p.code, "carton_retail"])) to p.carton,
-            amount(q[key(p.code, "box_retail"])) to p.box,
+        val entries: List<Pair<Double, MaterialCatalog?>> = listOf(
+            Pair(amount(q[key(p.code, "carton_wholesale")]), p.carton),
+            Pair(amount(q[key(p.code, "box_wholesale")]), p.box),
+            Pair(amount(q[key(p.code, "carton_retail")]), p.carton),
+            Pair(amount(q[key(p.code, "box_retail")]), p.box)
         )
         entries.forEachIndexed { index, (qty, item) ->
             val price = if (index < 2) item?.wholesalePrice else item?.retailPrice
             val value = qty * (price ?: 0.0)
             if (index < 2) wholesale += value else retail += value
             revenue += value
-            if (qty > 0 && item?.costPrice != null) cost += qty * item.costPrice else if (qty > 0) missing++
+            val costPrice = item?.costPrice
+            if (qty > 0 && costPrice != null) cost += qty * costPrice else if (qty > 0) missing++
         }
     }
     return Totals(wholesale, retail, revenue, cost, revenue - cost, missing)
