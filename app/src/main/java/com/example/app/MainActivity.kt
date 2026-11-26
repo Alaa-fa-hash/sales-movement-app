@@ -10,6 +10,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -211,7 +212,7 @@ private fun TableHeader(tab: SalesTab) {
 @Composable
 private fun ProductRow(product: ProductLine, tab: SalesTab, quantities: MutableMap<String, String>, rowIndex: Int, onChange: (String, String) -> Unit) {
     val rowColor = if (rowIndex % 2 == 0) Color.White else RowAlt
-    Row(Modifier.fillMaxWidth().background(rowColor).padding(vertical = 5.dp, horizontal = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().background(rowColor).padding(vertical = 5.dp, horizontal = 3.dp), verticalAlignment = Alignment.Top) {
         Column(Modifier.weight(1.55f).padding(start = 7.dp, end = 3.dp), horizontalAlignment = Alignment.End) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(product.name, color = Navy, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
@@ -228,7 +229,7 @@ private fun ProductRow(product: ProductLine, tab: SalesTab, quantities: MutableM
 
 @Composable
 private fun QuantityCell(enabled: Boolean, value: String, modifier: Modifier, onValueChange: (String) -> Unit) {
-    OutlinedTextField(value = value, onValueChange = onValueChange, enabled = enabled, singleLine = true, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done), textStyle = TextStyle(color = Navy, fontSize = 13.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center), modifier = modifier.height(42.dp).padding(horizontal = 2.dp), placeholder = { Text("0", color = Color(0xFF8A969C), fontSize = 12.sp) })
+    OutlinedTextField(value = value, onValueChange = onValueChange, enabled = enabled, singleLine = true, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done), textStyle = TextStyle(color = Navy, fontSize = 13.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center), contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 2.dp, bottom = 0.dp), modifier = modifier.height(42.dp).padding(horizontal = 2.dp), placeholder = { Text("0", color = Color(0xFF8A969C), fontSize = 12.sp) })
 }
 
 private fun priceLabel(product: ProductLine, tab: SalesTab): String {
