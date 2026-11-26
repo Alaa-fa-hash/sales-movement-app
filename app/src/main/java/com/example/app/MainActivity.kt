@@ -16,8 +16,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -67,7 +69,7 @@ import java.util.Locale
 private val Teal = Color(0xFF1699A8)
 private val Navy = Color(0xFF0B6672)
 private val Page = Color(0xFFF7F3EA)
-private val RowAlt = Color(0xFFE4F5F6)
+private val RowAlt = Color(0xFFF2F5F7)
 private val Green = Color(0xFF197D83)
 
 private data class ProductLine(val code: String, val name: String, val carton: MaterialCatalog?, val box: MaterialCatalog?)
@@ -107,7 +109,7 @@ private fun SalesMovementApp() {
     val historyExporter = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")) { uri ->
         if (uri != null) runCatching { exportHistoryXlsx(context, uri, preferences) }.onSuccess { message = "تم تصدير سجل المبيعات" }.onFailure { message = "فشل تصدير السجل: ${it.message}" }
     }
-    val products = catalog.groupBy { it.code }.map { (code, items) -> ProductLine(code, items.first().name, items.firstOrNull { it.unit == MaterialUnit.CARTON }, items.firstOrNull { it.unit == MaterialUnit.BOX }) }.sortedBy { it.code }
+    val products = buildProducts(catalog)
     val totals = calculateTotals(products, quantities)
 
     MaterialTheme {
@@ -132,7 +134,7 @@ private fun SalesMovementApp() {
                     }
                     TableHeader(selectedTab)
                     LazyColumn(Modifier.fillMaxSize().padding(horizontal = 10.dp)) {
-                        items(products) { product -> ProductRow(product, selectedTab, quantities) { field, value -> quantities[key(product.code, field)] = value.filter { it.isDigit() } } }
+                        itemsIndexed(products) { index, product -> ProductRow(product, selectedTab, quantities, index) { field, value -> quantities[key(product.code, field)] = value.filter { it.isDigit() } } }
                         item { Spacer(Modifier.height(28.dp)) }
                     }
                 }
@@ -207,13 +209,13 @@ private fun TableHeader(tab: SalesTab) {
 }
 
 @Composable
-private fun ProductRow(product: ProductLine, tab: SalesTab, quantities: MutableMap<String, String>, onChange: (String, String) -> Unit) {
-    val rowColor = if (product.code.hashCode() % 2 == 0) Color.White else RowAlt
+private fun ProductRow(product: ProductLine, tab: SalesTab, quantities: MutableMap<String, String>, rowIndex: Int, onChange: (String, String) -> Unit) {
+    val rowColor = if (rowIndex % 2 == 0) Color.White else RowAlt
     Row(Modifier.fillMaxWidth().background(rowColor).padding(vertical = 5.dp, horizontal = 3.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1.55f).padding(start = 7.dp, end = 3.dp), horizontalAlignment = Alignment.End) {
-            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
-                Text(product.name, color = Navy, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1, modifier = Modifier.align(Alignment.CenterEnd))
-                Text(priceLabel(product, tab), color = Color(0xFF687782), fontSize = 8.sp, maxLines = 1, modifier = Modifier.align(Alignment.CenterStart))
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(product.name, color = Navy, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
+                Text(priceLabel(product, tab), color = Color(0xFF687782), fontSize = 8.sp, maxLines = 1, modifier = Modifier.width(52.dp), textAlign = TextAlign.Start)
             }
         }
         if (tab != SalesTab.RETAIL) QuantityCell(product.carton != null, quantities[key(product.code, "carton_wholesale")].orEmpty(), Modifier.weight(1f)) { onChange("carton_wholesale", it) }
@@ -226,7 +228,7 @@ private fun ProductRow(product: ProductLine, tab: SalesTab, quantities: MutableM
 
 @Composable
 private fun QuantityCell(enabled: Boolean, value: String, modifier: Modifier, onValueChange: (String) -> Unit) {
-    OutlinedTextField(value = value, onValueChange = onValueChange, enabled = enabled, singleLine = true, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done), textStyle = TextStyle(fontSize = 13.sp, textAlign = TextAlign.Center), modifier = modifier.height(42.dp).padding(horizontal = 2.dp), placeholder = { Text("0", fontSize = 12.sp) })
+    OutlinedTextField(value = value, onValueChange = onValueChange, enabled = enabled, singleLine = true, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done), textStyle = TextStyle(color = Navy, fontSize = 13.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center), modifier = modifier.height(42.dp).padding(horizontal = 2.dp), placeholder = { Text("0", color = Color(0xFF8A969C), fontSize = 12.sp) })
 }
 
 private fun priceLabel(product: ProductLine, tab: SalesTab): String {
@@ -258,6 +260,21 @@ private fun amount(value: String?): Double = value?.toDoubleOrNull() ?: 0.0
 private fun formatMoney(value: Double): String = String.format(Locale.US, "%,.0f", value)
 private fun dateLabel(key: String): String = runCatching { SimpleDateFormat("dd/MM/yyyy", Locale.US).format(SimpleDateFormat("yyyyMMdd", Locale.US).parse(key)!!) }.getOrDefault(key)
 
+private fun buildProducts(catalog: List<MaterialCatalog>): List<ProductLine> = catalog.groupBy { it.code }.map { (code, items) ->
+    fun merged(unit: MaterialUnit): MaterialCatalog? {
+        val matches = items.filter { it.unit == unit }
+        if (matches.isEmpty()) return null
+        val first = matches.first()
+        return first.copy(
+            name = items.firstOrNull { it.name.isNotBlank() }?.name ?: first.name,
+            costPrice = matches.firstNotNullOfOrNull { it.costPrice },
+            wholesalePrice = matches.firstNotNullOfOrNull { it.wholesalePrice },
+            retailPrice = matches.firstNotNullOfOrNull { it.retailPrice }
+        )
+    }
+    ProductLine(code, items.firstOrNull { it.name.isNotBlank() }?.name.orEmpty(), merged(MaterialUnit.CARTON), merged(MaterialUnit.BOX))
+}.sortedBy { it.code }
+
 private fun calculateTotals(products: List<ProductLine>, q: Map<String, String>): Totals {
     var wholesale = 0.0; var retail = 0.0
     products.forEach { p ->
@@ -286,7 +303,7 @@ private fun saveDay(p: android.content.SharedPreferences, day: String, q: Map<St
 private fun loadDay(p: android.content.SharedPreferences, day: String): Map<String, String> = p.getString("day_$day", "").orEmpty().lineSequence().mapNotNull { line -> line.split('=', limit = 2).takeIf { it.size == 2 }?.let { it[0] to it[1] } }.toMap()
 
 private fun exportXlsx(context: Context, uri: android.net.Uri, date: String, catalog: List<MaterialCatalog>, q: Map<String, String>) {
-    val products = catalog.groupBy { it.code }.map { (code, items) -> ProductLine(code, items.first().name, items.firstOrNull { it.unit == MaterialUnit.CARTON }, items.firstOrNull { it.unit == MaterialUnit.BOX }) }.sortedBy { it.code }
+    val products = buildProducts(catalog)
     val workbook = XSSFWorkbook()
     val sheet = workbook.createSheet("مبيعات ${date.replace('/', '-')}")
     sheet.setRightToLeft(true)
