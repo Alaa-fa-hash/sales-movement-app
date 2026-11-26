@@ -27,6 +27,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -238,6 +239,7 @@ private fun ProductRow(product: ProductLine, tab: SalesTab, quantities: MutableM
 }
 
 @Composable
+@OptIn(ExperimentalMaterial3Api::class)
 private fun QuantityCell(enabled: Boolean, value: String, modifier: Modifier, allowDecimal: Boolean, onValueChange: (String) -> Unit) {
     val interactionSource = remember { MutableInteractionSource() }
     BasicTextField(
