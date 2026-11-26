@@ -69,6 +69,7 @@ import org.apache.poi.ss.util.CellRangeAddress
 import org.apache.poi.xssf.usermodel.XSSFWorkbook
 import org.apache.poi.xssf.usermodel.XSSFCellStyle
 import org.apache.poi.xssf.usermodel.XSSFColor
+import java.io.ByteArrayOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -267,7 +268,6 @@ private fun QuantityCell(enabled: Boolean, value: String, modifier: Modifier, al
                 singleLine = true,
                 visualTransformation = VisualTransformation.None,
                 interactionSource = interactionSource,
-                placeholder = { Text("0", color = Color(0xFF8A969C), fontSize = 12.sp, lineHeight = 18.sp) },
                 contentPadding = PaddingValues(0.dp),
             )
         },
@@ -429,8 +429,16 @@ private fun exportXlsx(context: Context, uri: android.net.Uri, date: String, cat
     sheet.createFreezePane(0, 1)
     sheet.setAutoFilter(CellRangeAddress(0, excelRow, 0, 8))
     listOf(14, 26, 12, 12, 12, 12, 16, 16, 18).forEachIndexed { i, width -> sheet.setColumnWidth(i, width * 256) }
-    context.contentResolver.openOutputStream(uri)?.use { workbook.write(it) } ?: error("تعذر إنشاء ملف Excel")
+    val bytes = ByteArrayOutputStream().use { output ->
+        workbook.write(output)
+        output.toByteArray()
+    }
     workbook.close()
+    require(bytes.isNotEmpty()) { "تعذر إنشاء محتوى ملف Excel" }
+    context.contentResolver.openOutputStream(uri)?.use { output ->
+        output.write(bytes)
+        output.flush()
+    } ?: error("تعذر إنشاء ملف Excel")
 }
 
 private fun quantitiesTotal(products: List<ProductLine>, q: Map<String, String>, index: Int): Double = products.sumOf { p -> amount(q[key(p.code, listOf("carton_wholesale", "box_wholesale", "carton_retail", "box_retail")[index])]) }
@@ -487,6 +495,14 @@ private fun exportHistoryXlsx(context: Context, uri: android.net.Uri, preference
     sheet.setAutoFilter(CellRangeAddress(0, days.size + 1, 0, 1))
     sheet.setColumnWidth(0, 18 * 256)
     sheet.setColumnWidth(1, 22 * 256)
-    context.contentResolver.openOutputStream(uri)?.use { workbook.write(it) } ?: error("تعذر إنشاء ملف سجل Excel")
+    val bytes = ByteArrayOutputStream().use { output ->
+        workbook.write(output)
+        output.toByteArray()
+    }
     workbook.close()
+    require(bytes.isNotEmpty()) { "تعذر إنشاء محتوى ملف سجل Excel" }
+    context.contentResolver.openOutputStream(uri)?.use { output ->
+        output.write(bytes)
+        output.flush()
+    } ?: error("تعذر إنشاء ملف سجل Excel")
 }
