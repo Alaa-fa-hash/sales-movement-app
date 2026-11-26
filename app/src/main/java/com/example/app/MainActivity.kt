@@ -57,10 +57,9 @@ private val Navy = Color(0xFF10283D)
 private val Page = Color(0xFFF7F3EA)
 private val RowAlt = Color(0xFFF4F7F8)
 private val Green = Color(0xFF2E7D50)
-private val Amber = Color(0xFF9A6900)
 
 private data class ProductLine(val code: String, val name: String, val carton: MaterialCatalog?, val box: MaterialCatalog?)
-private data class Totals(val wholesale: Double, val retail: Double, val revenue: Double, val commission: Double)
+private data class Totals(val wholesale: Double, val retail: Double, val revenue: Double)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -138,10 +137,6 @@ private fun SummaryBar(t: Totals) {
                 SummaryCell("الإجمالي", t.revenue, Green)
             }
             HorizontalDivider(Modifier.padding(vertical = 8.dp), color = Color(0xFFD7E2E6))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                SummaryCell("العمولة", t.commission, Green)
-                SummaryCell("نسبة العمولة", if (t.revenue == 0.0) 0.0 else t.commission / t.revenue * 100.0, Green, "%")
-            }
         }
     }
 }
@@ -216,7 +211,7 @@ private fun HistoryDialog(preferences: android.content.SharedPreferences, close:
             val parts = preferences.getString("summary_$day", "0|0|0").orEmpty().split('|')
             Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(day, color = Navy, fontWeight = FontWeight.Bold)
-                Text("مبيع ${parts.getOrNull(0) ?: "0"} — عمولة ${parts.getOrNull(1) ?: "0"}", color = Green)
+                Text("إجمالي المبيعات ${parts.getOrNull(0) ?: "0"}", color = Green)
             }
             HorizontalDivider()
         } }
@@ -242,8 +237,7 @@ private fun calculateTotals(products: List<ProductLine>, q: Map<String, String>)
             if (index < 2) wholesale += value else retail += value
         }
     }
-    val commission = kotlin.math.round(wholesale * 0.10) + kotlin.math.round(retail * 0.025)
-    return Totals(wholesale, retail, wholesale + retail, commission)
+    return Totals(wholesale, retail, wholesale + retail)
 }
 
 private fun saveCatalog(p: android.content.SharedPreferences, items: List<MaterialCatalog>) = p.edit().putString("catalog", items.joinToString("\n") { listOf(it.code, it.name, it.unit.label, it.costPrice ?: "", it.wholesalePrice ?: "", it.retailPrice ?: "").joinToString("|") }).apply()
@@ -252,7 +246,7 @@ private fun loadCatalog(p: android.content.SharedPreferences): List<MaterialCata
     val unit = MaterialUnit.from(a[2]); if (unit == MaterialUnit.OTHER) return@mapNotNull null
     MaterialCatalog(a[0], a[1], unit, a[3].toDoubleOrNull(), a[4].toDoubleOrNull(), a[5].toDoubleOrNull())
 }.toList()
-private fun saveDay(p: android.content.SharedPreferences, day: String, q: Map<String, String>, t: Totals) { p.edit().putString("day_$day", q.entries.joinToString("\n") { "${it.key}=${it.value}" }).putString("summary_$day", "${t.revenue}|${t.commission}").putStringSet("saved_days", p.getStringSet("saved_days", emptySet()).orEmpty() + day).apply() }
+private fun saveDay(p: android.content.SharedPreferences, day: String, q: Map<String, String>, t: Totals) { p.edit().putString("day_$day", q.entries.joinToString("\n") { "${it.key}=${it.value}" }).putString("summary_$day", "${t.revenue}").putStringSet("saved_days", p.getStringSet("saved_days", emptySet()).orEmpty() + day).apply() }
 private fun loadDay(p: android.content.SharedPreferences, day: String): Map<String, String> = p.getString("day_$day", "").orEmpty().lineSequence().mapNotNull { line -> line.split('=', limit = 2).takeIf { it.size == 2 }?.let { it[0] to it[1] } }.toMap()
 
 private fun exportXlsx(context: Context, uri: android.net.Uri, date: String, catalog: List<MaterialCatalog>, q: Map<String, String>) {
@@ -260,7 +254,7 @@ private fun exportXlsx(context: Context, uri: android.net.Uri, date: String, cat
     val workbook = XSSFWorkbook()
     val sheet = workbook.createSheet("مبيعات $date")
     sheet.setRightToLeft(true)
-    val headers = listOf("رمز المادة", "المادة", "جملة طرد", "جملة علبة", "مفرق طرد", "مفرق علبة", "قيمة الجملة", "عمولة الجملة", "قيمة المفرق", "عمولة المفرق", "إجمالي المبيعات", "إجمالي العمولة")
+    val headers = listOf("رمز المادة", "المادة", "جملة طرد", "جملة علبة", "مفرق طرد", "مفرق علبة", "قيمة الجملة", "قيمة المفرق", "إجمالي المبيعات")
     headers.forEachIndexed { i, h -> sheet.createRow(0).createCell(i).setCellValue(h) }
     products.forEachIndexed { index, p ->
         val row = sheet.createRow(index + 1)
@@ -271,11 +265,8 @@ private fun exportXlsx(context: Context, uri: android.net.Uri, date: String, cat
         val wholesaleValue = kotlin.math.round(quantities[0] * (p.carton?.wholesalePrice ?: 0.0) + quantities[1] * (p.box?.wholesalePrice ?: 0.0))
         val retailValue = kotlin.math.round(quantities[2] * (p.carton?.retailPrice ?: 0.0) + quantities[3] * (p.box?.retailPrice ?: 0.0))
         row.createCell(6).setCellValue(wholesaleValue)
-        row.createCell(7).setCellValue(kotlin.math.round(wholesaleValue * 0.10))
-        row.createCell(8).setCellValue(retailValue)
-        row.createCell(9).setCellValue(kotlin.math.round(retailValue * 0.025))
-        row.createCell(10).setCellValue(wholesaleValue + retailValue)
-        row.createCell(11).setCellValue(kotlin.math.round(wholesaleValue * 0.10) + kotlin.math.round(retailValue * 0.025))
+        row.createCell(7).setCellValue(retailValue)
+        row.createCell(8).setCellValue(wholesaleValue + retailValue)
     }
     context.contentResolver.openOutputStream(uri)?.use { workbook.write(it) } ?: error("تعذر إنشاء ملف Excel")
     workbook.close()
