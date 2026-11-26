@@ -41,6 +41,7 @@ import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateListOf
@@ -138,6 +139,11 @@ private fun SalesMovementApp() {
     fun persistCurrentDay() {
         val currentTotals = calculateTotals(products, quantities)
         saveDay(preferences, dateKey, quantities, currentTotals.copy(revenue = currentTotals.revenue + calculateSpecialTotal(specialSales)), specialSales)
+    }
+    LaunchedEffect(dateKey) {
+        if (!preferences.getStringSet("saved_days", emptySet()).orEmpty().contains(dateKey)) {
+            saveDay(preferences, dateKey, quantities, Totals(0.0, 0.0, 0.0), specialSales)
+        }
     }
 
     MaterialTheme {
