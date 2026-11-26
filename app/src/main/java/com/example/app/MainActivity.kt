@@ -96,6 +96,9 @@ private fun SalesMovementApp() {
     val exporter = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")) { uri ->
         if (uri != null) runCatching { exportXlsx(context, uri, date, catalog, quantities) }.onSuccess { message = "تم تصدير Excel" }.onFailure { message = "فشل التصدير: ${it.message}" }
     }
+    val historyExporter = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")) { uri ->
+        if (uri != null) runCatching { exportHistoryXlsx(context, uri, preferences) }.onSuccess { message = "تم تصدير سجل المبيعات" }.onFailure { message = "فشل تصدير السجل: ${it.message}" }
+    }
     val products = catalog.groupBy { it.code }.map { (code, items) -> ProductLine(code, items.first().name, items.firstOrNull { it.unit == MaterialUnit.CARTON }, items.firstOrNull { it.unit == MaterialUnit.BOX }) }.sortedBy { it.code }
     val totals = calculateTotals(products, quantities)
 
@@ -108,6 +111,7 @@ private fun SalesMovementApp() {
                     onImport = { launcher.launch(arrayOf("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/vnd.ms-excel")) },
                     onSave = { saveDay(preferences, dateKey, quantities, totals); message = "تم حفظ مبيعات $date" },
                     onExport = { exporter.launch("مبيعات-${date.replace('/', '-')}.xlsx") },
+                    onExportHistory = { historyExporter.launch("سجل-المبيعات.xlsx") },
                     onHistory = { historyOpen = true },
                     onClear = { quantities.clear(); message = "تم تصفير إدخالات اليوم" },
                 )
@@ -161,13 +165,14 @@ private fun SummaryCell(label: String, value: Double, color: Color = Navy, suffi
 }
 
 @Composable
-private fun Actions(onImport: () -> Unit, onSave: () -> Unit, onExport: () -> Unit, onHistory: () -> Unit, onClear: () -> Unit) {
+private fun Actions(onImport: () -> Unit, onSave: () -> Unit, onExport: () -> Unit, onExportHistory: () -> Unit, onHistory: () -> Unit, onClear: () -> Unit) {
     Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         Button(onClick = onImport, colors = ButtonDefaults.buttonColors(containerColor = Teal), modifier = Modifier.weight(1f)) { Text("دليل") }
         Button(onClick = onSave, colors = ButtonDefaults.buttonColors(containerColor = Green), modifier = Modifier.weight(1f)) { Text("حفظ اليوم") }
         OutlinedButton(onClick = onExport, modifier = Modifier.weight(1f)) { Text("Excel") }
         TextButton(onClick = onHistory, modifier = Modifier.weight(1f)) { Text("السجل") }
     }
+    OutlinedButton(onClick = onExportHistory, modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp).height(38.dp)) { Text("تصدير سجل Excel") }
     TextButton(onClick = onClear, modifier = Modifier.fillMaxWidth().height(32.dp)) { Text("تصفير الإدخالات", fontSize = 12.sp) }
 }
 
@@ -221,7 +226,7 @@ private fun HistoryDialog(preferences: android.content.SharedPreferences, close:
         if (days.isEmpty()) Text("لا يوجد أيام محفوظة بعد.") else LazyColumn { items(days) { day ->
             val parts = preferences.getString("summary_$day", "0|0|0").orEmpty().split('|')
             Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(day, color = Navy, fontWeight = FontWeight.Bold)
+                Text(dateLabel(day), color = Navy, fontWeight = FontWeight.Bold)
                 Text("إجمالي المبيعات ${parts.getOrNull(0) ?: "0"}", color = Green)
             }
             HorizontalDivider()
@@ -232,6 +237,7 @@ private fun HistoryDialog(preferences: android.content.SharedPreferences, close:
 private fun key(code: String, field: String) = "$code:$field"
 private fun amount(value: String?): Double = value?.toDoubleOrNull() ?: 0.0
 private fun formatMoney(value: Double): String = String.format(Locale.US, "%,.0f", value)
+private fun dateLabel(key: String): String = runCatching { SimpleDateFormat("dd/MM/yyyy", Locale.US).format(SimpleDateFormat("yyyyMMdd", Locale.US).parse(key)!!) }.getOrDefault(key)
 
 private fun calculateTotals(products: List<ProductLine>, q: Map<String, String>): Totals {
     var wholesale = 0.0; var retail = 0.0
@@ -280,5 +286,22 @@ private fun exportXlsx(context: Context, uri: android.net.Uri, date: String, cat
         row.createCell(8).setCellValue(wholesaleValue + retailValue)
     }
     context.contentResolver.openOutputStream(uri)?.use { workbook.write(it) } ?: error("تعذر إنشاء ملف Excel")
+    workbook.close()
+}
+
+private fun exportHistoryXlsx(context: Context, uri: android.net.Uri, preferences: android.content.SharedPreferences) {
+    val workbook = XSSFWorkbook()
+    val sheet = workbook.createSheet("سجل المبيعات")
+    sheet.setRightToLeft(true)
+    sheet.createRow(0).apply {
+        createCell(0).setCellValue("التاريخ")
+        createCell(1).setCellValue("إجمالي المبيعات")
+    }
+    preferences.getStringSet("saved_days", emptySet()).orEmpty().toList().sorted().forEachIndexed { index, day ->
+        val row = sheet.createRow(index + 1)
+        row.createCell(0).setCellValue(dateLabel(day))
+        row.createCell(1).setCellValue(preferences.getString("summary_$day", "0").orEmpty().split('|').firstOrNull()?.toDoubleOrNull() ?: 0.0)
+    }
+    context.contentResolver.openOutputStream(uri)?.use { workbook.write(it) } ?: error("تعذر إنشاء ملف سجل Excel")
     workbook.close()
 }
