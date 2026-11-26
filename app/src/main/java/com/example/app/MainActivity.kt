@@ -240,7 +240,6 @@ private fun calculateTotals(products: List<ProductLine>, q: Map<String, String>)
             val price = if (index < 2) item?.wholesalePrice else item?.retailPrice
             val value = kotlin.math.round(qty * (price ?: 0.0))
             if (index < 2) wholesale += value else retail += value
-            revenue += value
         }
     }
     val commission = kotlin.math.round(wholesale * 0.10) + kotlin.math.round(retail * 0.025)
