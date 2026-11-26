@@ -210,8 +210,10 @@ private fun ProductRow(product: ProductLine, tab: SalesTab, quantities: MutableM
     val rowColor = if (product.code.hashCode() % 2 == 0) Color.White else RowAlt
     Row(Modifier.fillMaxWidth().background(rowColor).padding(vertical = 5.dp, horizontal = 3.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1.55f).padding(start = 7.dp, end = 3.dp), horizontalAlignment = Alignment.End) {
-            Text(product.name, color = Navy, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1)
-            Text(priceLabel(product, tab), color = Color(0xFF687782), fontSize = 8.sp, lineHeight = 9.sp, maxLines = 1)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(product.name, color = Navy, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1, modifier = Modifier.weight(1f))
+                Text(priceLabel(product, tab), color = Color(0xFF687782), fontSize = 8.sp, maxLines = 1)
+            }
         }
         if (tab != SalesTab.RETAIL) QuantityCell(product.carton != null, quantities[key(product.code, "carton_wholesale")].orEmpty(), Modifier.weight(1f)) { onChange("carton_wholesale", it) }
         if (tab != SalesTab.RETAIL) QuantityCell(product.box != null, quantities[key(product.code, "box_wholesale")].orEmpty(), Modifier.weight(1f)) { onChange("box_wholesale", it) }
@@ -229,9 +231,9 @@ private fun QuantityCell(enabled: Boolean, value: String, modifier: Modifier, on
 private fun priceLabel(product: ProductLine, tab: SalesTab): String {
     fun price(value: Double?): String = value?.let { formatMoney(it) } ?: "—"
     return when (tab) {
-        SalesTab.WHOLESALE -> "طرد ${price(product.carton?.wholesalePrice)} | علبة ${price(product.box?.wholesalePrice)}"
-        SalesTab.RETAIL -> "طرد ${price(product.carton?.retailPrice)} | علبة ${price(product.box?.retailPrice)}"
-        SalesTab.TOTAL -> "ج: ${price(product.carton?.wholesalePrice)} / م: ${price(product.carton?.retailPrice)}"
+        SalesTab.WHOLESALE -> "${price(product.carton?.wholesalePrice)}/${price(product.box?.wholesalePrice)}"
+        SalesTab.RETAIL -> "${price(product.carton?.retailPrice)}/${price(product.box?.retailPrice)}"
+        SalesTab.TOTAL -> "ج${price(product.carton?.wholesalePrice)} م${price(product.carton?.retailPrice)}"
     }
 }
 
