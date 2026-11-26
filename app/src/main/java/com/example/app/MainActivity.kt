@@ -413,9 +413,9 @@ private fun exportXlsx(context: Context, uri: android.net.Uri, date: String, cat
         val boxWholesalePrice = p.box?.wholesalePrice ?: 0.0
         val cartonRetailPrice = p.carton?.retailPrice ?: 0.0
         val boxRetailPrice = p.box?.retailPrice ?: 0.0
-        row.createCell(6).apply { setCellFormula("=C$excelNumber*${cartonWholesalePrice}+D$excelNumber*${boxWholesalePrice}"); cellStyle = numericStyle }
-        row.createCell(7).apply { setCellFormula("=E$excelNumber*${cartonRetailPrice}+F$excelNumber*${boxRetailPrice}"); cellStyle = numericStyle }
-        row.createCell(8).apply { setCellFormula("=G$excelNumber+H$excelNumber"); cellStyle = numericStyle }
+        row.createCell(6).apply { setCellFormula("C$excelNumber*${cartonWholesalePrice}+D$excelNumber*${boxWholesalePrice}"); cellStyle = numericStyle }
+        row.createCell(7).apply { setCellFormula("E$excelNumber*${cartonRetailPrice}+F$excelNumber*${boxRetailPrice}"); cellStyle = numericStyle }
+        row.createCell(8).apply { setCellFormula("G$excelNumber+H$excelNumber"); cellStyle = numericStyle }
     }
     val total = sheet.createRow(excelRow)
     total.createCell(0).apply { setCellValue("الإجمالي"); cellStyle = totalStyle }
@@ -423,7 +423,7 @@ private fun exportXlsx(context: Context, uri: android.net.Uri, date: String, cat
     val lastDataRow = excelRow
     for (i in 2..8) total.createCell(i).apply {
         val column = ('A'.code + i).toChar()
-        setCellFormula(if (lastDataRow >= 2) "=SUM(${column}2:${column}$lastDataRow)" else "=0")
+        setCellFormula(if (lastDataRow >= 2) "SUM(${column}2:${column}$lastDataRow)" else "0")
         cellStyle = totalStyle
     }
     sheet.createFreezePane(0, 1)
@@ -488,7 +488,7 @@ private fun exportHistoryXlsx(context: Context, uri: android.net.Uri, preference
     val totalRow = sheet.createRow(days.size + 1)
     totalRow.createCell(0).apply { setCellValue("الإجمالي"); cellStyle = totalStyle }
     totalRow.createCell(1).apply {
-        setCellFormula(if (days.isEmpty()) "=0" else "=SUM(B2:B${days.size + 1})")
+        setCellFormula(if (days.isEmpty()) "0" else "SUM(B2:B${days.size + 1})")
         cellStyle = totalStyle
     }
     sheet.createFreezePane(0, 1)
