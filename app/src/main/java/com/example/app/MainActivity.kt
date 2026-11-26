@@ -109,11 +109,7 @@ private fun SalesMovementApp() {
     var message by remember { mutableStateOf("") }
     var historyOpen by remember { mutableStateOf(false) }
     var selectedTab by remember { mutableStateOf(SalesTab.TOTAL) }
-    val specialSales = remember {
-        mutableStateListOf<SpecialSaleDraft>().apply {
-            repeat(20) { add(SpecialSaleDraft()) }
-        }
-    }
+    val specialSales = remember { mutableStateListOf(SpecialSaleDraft()) }
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
         runCatching {
@@ -258,7 +254,7 @@ private fun SpecialSalesTable(catalog: List<MaterialCatalog>, rows: List<Special
                 HorizontalDivider(color = Color(0xFFD7E2E6))
             }
             item {
-                OutlinedButton(onClick = onAddRow, modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)) { Text("إضافة مادة بيع خاص") }
+                OutlinedButton(onClick = onAddRow, modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)) { Text("+ إضافة سطر") }
                 Spacer(Modifier.height(28.dp))
             }
         }
