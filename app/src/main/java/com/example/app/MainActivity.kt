@@ -249,7 +249,6 @@ private fun QuantityCell(enabled: Boolean, value: String, modifier: Modifier, al
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
         ),
-        contentPadding = PaddingValues(0.dp),
         modifier = modifier.height(42.dp).padding(horizontal = 2.dp),
         placeholder = { Text("0", color = Color(0xFF8A969C), fontSize = 12.sp, lineHeight = 42.sp) },
     )
