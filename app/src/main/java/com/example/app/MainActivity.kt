@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -150,7 +151,7 @@ private fun SalesMovementApp() {
         Surface(Modifier.fillMaxSize(), color = Page) {
             Column(Modifier.fillMaxSize()) {
                 Header(date)
-                SummaryBar(dailyTotals)
+                SummaryBar(dailyTotals, specialTotal)
                 Actions(
                     onImport = { launcher.launch(arrayOf("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/vnd.ms-excel")) },
                     onSave = { persistCurrentDay(); message = "تم حفظ مبيعات $date" },
@@ -176,7 +177,7 @@ private fun SalesMovementApp() {
                     SpecialSalesTable(specialSales, onChanged = { persistCurrentDay() }) { specialSales.add(SpecialSaleDraft()); persistCurrentDay() }
                     } else {
                         TableHeader(selectedTab)
-                        LazyColumn(Modifier.fillMaxSize().padding(horizontal = 10.dp)) {
+                        LazyColumn(Modifier.weight(1f).imePadding().padding(horizontal = 10.dp)) {
                             itemsIndexed(products) { index, product -> ProductRow(product, selectedTab, quantities, index) { field, value -> quantities[key(product.code, field)] = sanitizeQuantity(value, field.startsWith("carton")); persistCurrentDay() } }
                             item { Spacer(Modifier.height(28.dp)) }
                         }
@@ -215,12 +216,13 @@ private fun Header(date: String) {
 }
 
 @Composable
-private fun SummaryBar(t: Totals) {
+private fun SummaryBar(t: Totals, specialTotal: Double) {
     Card(Modifier.fillMaxWidth().padding(8.dp), colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(14.dp)) {
         Column(Modifier.padding(horizontal = 8.dp, vertical = 7.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                 SummaryCell("جملة", t.wholesale)
                 SummaryCell("مفرق", t.retail)
+                SummaryCell("خاص", specialTotal)
                 SummaryCell("الإجمالي", t.revenue, Green)
             }
             HorizontalDivider(Modifier.padding(vertical = 8.dp), color = Color(0xFFD7E2E6))
@@ -282,7 +284,7 @@ private fun SpecialSalesTable(rows: List<SpecialSaleDraft>, onChanged: () -> Uni
             Text("السعر الخاص", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.15f), textAlign = TextAlign.Center, maxLines = 1)
             Text("الإجمالي", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.15f), textAlign = TextAlign.Center, maxLines = 1)
         }
-        LazyColumn(Modifier.fillMaxSize()) {
+        LazyColumn(Modifier.fillMaxSize().imePadding()) {
             itemsIndexed(rows) { index, row ->
                 val total = if (row.quantity.isNotBlank() && row.price.isNotBlank()) amount(row.quantity) * amount(row.price) else null
                 val rowColor = if (index % 2 == 0) Color.White else RowAlt
