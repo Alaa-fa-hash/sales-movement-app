@@ -86,7 +86,7 @@ private val Green = Color(0xFF0B7A8C)
 private data class ProductLine(val code: String, val name: String, val carton: MaterialCatalog?, val box: MaterialCatalog?)
 private data class Totals(val wholesale: Double, val retail: Double, val revenue: Double)
 private class SpecialSaleDraft {
-    var code by mutableStateOf("")
+    var name by mutableStateOf("")
     var quantity by mutableStateOf("")
     var price by mutableStateOf("")
 }
@@ -173,7 +173,7 @@ private fun SalesMovementApp() {
                         }
                     }
                     if (selectedTab == SalesTab.SPECIAL) {
-                        SpecialSalesTable(catalog, specialSales, onChanged = { persistCurrentDay() }) { specialSales.add(SpecialSaleDraft()); persistCurrentDay() }
+                    SpecialSalesTable(specialSales, onChanged = { persistCurrentDay() }) { specialSales.add(SpecialSaleDraft()); persistCurrentDay() }
                     } else {
                         TableHeader(selectedTab)
                         LazyColumn(Modifier.fillMaxSize().padding(horizontal = 10.dp)) {
@@ -274,23 +274,20 @@ private fun TableHeader(tab: SalesTab) {
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
-private fun SpecialSalesTable(catalog: List<MaterialCatalog>, rows: List<SpecialSaleDraft>, onChanged: () -> Unit, onAddRow: () -> Unit) {
+private fun SpecialSalesTable(rows: List<SpecialSaleDraft>, onChanged: () -> Unit, onAddRow: () -> Unit) {
     Column(Modifier.fillMaxSize().padding(horizontal = 10.dp)) {
         Row(Modifier.fillMaxWidth().background(Navy).padding(vertical = 4.dp, horizontal = 3.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("رمز المادة", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.05f), textAlign = TextAlign.Center, maxLines = 1)
-            Text("المادة", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.55f), textAlign = TextAlign.Center, maxLines = 1)
+            Text("المادة", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.8f), textAlign = TextAlign.Center, maxLines = 1)
             Text("الكمية", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center, maxLines = 1)
             Text("السعر الخاص", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.15f), textAlign = TextAlign.Center, maxLines = 1)
             Text("الإجمالي", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.15f), textAlign = TextAlign.Center, maxLines = 1)
         }
         LazyColumn(Modifier.fillMaxSize()) {
             itemsIndexed(rows) { index, row ->
-                val materialName = catalog.firstOrNull { it.code.trim() == row.code.trim() }?.name.orEmpty()
                 val total = if (row.quantity.isNotBlank() && row.price.isNotBlank()) amount(row.quantity) * amount(row.price) else null
                 val rowColor = if (index % 2 == 0) Color.White else RowAlt
                 Row(Modifier.fillMaxWidth().background(rowColor).padding(vertical = 5.dp, horizontal = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-                    SpecialInputCell(row.code, Modifier.weight(1.05f), KeyboardType.Text, "رمز") { row.code = it; onChanged() }
-                    Text(materialName.ifBlank { "—" }, color = Navy, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, modifier = Modifier.weight(1.55f).padding(horizontal = 3.dp), textAlign = TextAlign.End)
+                    SpecialInputCell(row.name, Modifier.weight(1.8f), KeyboardType.Text, "اسم المادة") { row.name = it; onChanged() }
                     SpecialInputCell(row.quantity, Modifier.weight(1f), KeyboardType.Decimal, "كمية") { row.quantity = sanitizeQuantity(it, true); onChanged() }
                     SpecialInputCell(row.price, Modifier.weight(1.15f), KeyboardType.Decimal, "سعر") { row.price = sanitizeQuantity(it, true); onChanged() }
                     Text(total?.let(::formatMoney) ?: "—", color = Navy, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, modifier = Modifier.weight(1.15f), textAlign = TextAlign.Center)
@@ -473,7 +470,7 @@ private fun loadCatalog(p: android.content.SharedPreferences): List<MaterialCata
 private fun saveDay(p: android.content.SharedPreferences, day: String, q: Map<String, String>, t: Totals, specialSales: List<SpecialSaleDraft>) {
     p.edit()
         .putString("day_$day", q.entries.joinToString("\n") { "${it.key}=${it.value}" })
-        .putString("special_$day", specialSales.joinToString("\n") { listOf(it.code, it.quantity, it.price).joinToString("|") })
+        .putString("special_$day", specialSales.joinToString("\n") { listOf(it.name, it.quantity, it.price).joinToString("|") })
         .putString("summary_$day", "${t.revenue}")
         .putStringSet("saved_days", p.getStringSet("saved_days", emptySet()).orEmpty() + day)
         .apply()
@@ -482,7 +479,7 @@ private fun loadDay(p: android.content.SharedPreferences, day: String): Map<Stri
 private fun loadSpecialSales(p: android.content.SharedPreferences, day: String): List<SpecialSaleDraft> = p.getString("special_$day", "").orEmpty().lineSequence().mapNotNull { line ->
     val parts = line.split('|')
     if (parts.size < 3) return@mapNotNull null
-    SpecialSaleDraft().apply { code = parts[0]; quantity = parts[1]; price = parts[2] }
+    SpecialSaleDraft().apply { name = parts[0]; quantity = parts[1]; price = parts[2] }
 }.toList()
 private fun calculateSpecialTotal(rows: List<SpecialSaleDraft>): Double = rows.sumOf { amount(it.quantity) * amount(it.price) }
 private fun clearSalesHistory(p: android.content.SharedPreferences) {
@@ -497,7 +494,7 @@ private fun exportXlsx(context: Context, uri: android.net.Uri, date: String, cat
     workbook.setForceFormulaRecalculation(true)
     val sheet = workbook.createSheet("مبيعات ${date.replace('/', '-')}")
     sheet.setRightToLeft(true)
-    val headers = listOf("رمز المادة", "المادة", "جملة طرد", "جملة علبة", "مفرق طرد", "مفرق علبة", "قيمة الجملة", "قيمة المفرق", "إجمالي المبيعات")
+    val headers = listOf("رمز المادة", "المادة", "جملة طرد", "جملة علبة", "مفرق طرد", "مفرق علبة", "قيمة الجملة", "قيمة المفرق", "إجمالي المبيعات", "خاص كمية", "خاص سعر", "إجمالي الخاص")
     val numberFormat = workbook.createDataFormat().getFormat("#,##0")
     fun rgb(hex: String): XSSFColor = XSSFColor(hex.chunked(2).map { it.toInt(16).toByte() }.toByteArray(), null)
     fun makeStyle(fill: XSSFColor, bold: Boolean = false, numeric: Boolean = false, whiteText: Boolean = false): XSSFCellStyle = workbook.createCellStyle().apply {
@@ -548,50 +545,39 @@ private fun exportXlsx(context: Context, uri: android.net.Uri, date: String, cat
         val boxRetailPrice = p.box?.retailPrice ?: 0.0
         row.createCell(6).apply { setCellFormula("C$excelNumber*${cartonWholesalePrice}+D$excelNumber*${boxWholesalePrice}"); cellStyle = numericStyle }
         row.createCell(7).apply { setCellFormula("E$excelNumber*${cartonRetailPrice}+F$excelNumber*${boxRetailPrice}"); cellStyle = numericStyle }
-        row.createCell(8).apply { setCellFormula("G$excelNumber+H$excelNumber"); cellStyle = numericStyle }
+        row.createCell(8).apply { setCellFormula("G$excelNumber+H$excelNumber+L$excelNumber"); cellStyle = numericStyle }
+        row.createCell(9).cellStyle = numericStyle
+        row.createCell(10).cellStyle = numericStyle
+        row.createCell(11).cellStyle = numericStyle
+    }
+    val filledSpecialSales = specialSales.filter { it.name.isNotBlank() || it.quantity.isNotBlank() || it.price.isNotBlank() }
+    filledSpecialSales.forEachIndexed { index, sale ->
+        val row = sheet.createRow(excelRow++)
+        val rowNumber = excelRow + 1
+        val visibleRowIndex = excelRow - 2
+        val isAlternateRow = visibleRowIndex % 2 == 1
+        val textStyle = if (isAlternateRow) altStyle else bodyStyle
+        val numericStyle = if (isAlternateRow) altNumberStyle else bodyNumberStyle
+        row.createCell(0).apply { setCellValue(""); cellStyle = textStyle }
+        row.createCell(1).apply { setCellValue(sale.name); cellStyle = textStyle }
+        for (i in 2..7) row.createCell(i).apply { setCellValue(0.0); cellStyle = numericStyle }
+        row.createCell(8).apply { setCellFormula("L$rowNumber"); cellStyle = numericStyle }
+        row.createCell(9).apply { setCellValue(amount(sale.quantity)); cellStyle = numericStyle }
+        row.createCell(10).apply { setCellValue(amount(sale.price)); cellStyle = numericStyle }
+        row.createCell(11).apply { setCellFormula("J$rowNumber*K$rowNumber"); cellStyle = numericStyle }
     }
     val total = sheet.createRow(excelRow)
     total.createCell(0).apply { setCellValue("الإجمالي"); cellStyle = totalStyle }
     total.createCell(1).cellStyle = totalStyle
     val lastDataRow = excelRow
-    for (i in 2..8) total.createCell(i).apply {
+    for (i in 2..11) total.createCell(i).apply {
         val column = ('A'.code + i).toChar()
         setCellFormula(if (lastDataRow >= 2) "SUM(${column}2:${column}$lastDataRow)" else "0")
         cellStyle = totalStyle
     }
     sheet.createFreezePane(0, 1)
-    sheet.setAutoFilter(CellRangeAddress(0, excelRow, 0, 8))
-    listOf(14, 26, 12, 12, 12, 12, 16, 16, 18).forEachIndexed { i, width -> sheet.setColumnWidth(i, width * 256) }
-    val specialSheet = workbook.createSheet("بيع خاص")
-    specialSheet.setRightToLeft(true)
-    val specialHeaders = listOf("رمز المادة", "المادة", "الكمية", "السعر الخاص", "الإجمالي")
-    val specialHeader = specialSheet.createRow(0)
-    specialHeader.heightInPoints = 26f
-    specialHeaders.forEachIndexed { i, title -> specialHeader.createCell(i).apply { setCellValue(title); cellStyle = headerStyle } }
-    val filledSpecialSales = specialSales.filter { it.code.isNotBlank() || it.quantity.isNotBlank() || it.price.isNotBlank() }
-    filledSpecialSales.forEachIndexed { index, sale ->
-        val rowNumber = index + 2
-        val row = specialSheet.createRow(index + 1)
-        val textStyle = if (index % 2 == 0) bodyStyle else altStyle
-        val numericStyle = if (index % 2 == 0) bodyNumberStyle else altNumberStyle
-        val name = catalog.firstOrNull { it.code.trim() == sale.code.trim() }?.name.orEmpty()
-        row.createCell(0).apply { setCellValue(sale.code); cellStyle = textStyle }
-        row.createCell(1).apply { setCellValue(name); cellStyle = textStyle }
-        row.createCell(2).apply { setCellValue(amount(sale.quantity)); cellStyle = numericStyle }
-        row.createCell(3).apply { setCellValue(amount(sale.price)); cellStyle = numericStyle }
-        row.createCell(4).apply { setCellFormula("C$rowNumber*D$rowNumber"); cellStyle = numericStyle }
-    }
-    val specialTotalRow = specialSheet.createRow(filledSpecialSales.size + 1)
-    specialTotalRow.createCell(0).apply { setCellValue("الإجمالي"); cellStyle = totalStyle }
-    specialTotalRow.createCell(1).cellStyle = totalStyle
-    for (i in 2..4) specialTotalRow.createCell(i).apply {
-        val column = ('A'.code + i).toChar()
-        setCellFormula(if (filledSpecialSales.isEmpty()) "0" else "SUM(${column}2:${column}${filledSpecialSales.size + 1})")
-        cellStyle = totalStyle
-    }
-    specialSheet.createFreezePane(0, 1)
-    specialSheet.setAutoFilter(CellRangeAddress(0, filledSpecialSales.size + 1, 0, 4))
-    listOf(16, 28, 14, 16, 16).forEachIndexed { i, width -> specialSheet.setColumnWidth(i, width * 256) }
+    sheet.setAutoFilter(CellRangeAddress(0, excelRow, 0, 11))
+    listOf(14, 28, 12, 12, 12, 12, 16, 16, 18, 14, 14, 16).forEachIndexed { i, width -> sheet.setColumnWidth(i, width * 256) }
     val bytes = ByteArrayOutputStream().use { output ->
         workbook.write(output)
         output.toByteArray()
