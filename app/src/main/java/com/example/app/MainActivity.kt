@@ -51,7 +51,14 @@ import androidx.compose.ui.unit.sp
 import com.example.app.excel.MaterialCatalog
 import com.example.app.excel.MaterialCatalogReader
 import com.example.app.excel.MaterialUnit
+import org.apache.poi.ss.usermodel.BorderStyle
+import org.apache.poi.ss.usermodel.FillPatternType
+import org.apache.poi.ss.usermodel.HorizontalAlignment
+import org.apache.poi.ss.usermodel.IndexedColors
+import org.apache.poi.ss.usermodel.VerticalAlignment
+import org.apache.poi.ss.util.CellRangeAddress
 import org.apache.poi.xssf.usermodel.XSSFWorkbook
+import org.apache.poi.xssf.usermodel.XSSFCellStyle
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -119,7 +126,7 @@ private fun SalesMovementApp() {
                 if (products.isEmpty()) EmptyState() else {
                     TabRow(selectedTabIndex = selectedTab.ordinal, containerColor = Color.White, contentColor = Teal) {
                         SalesTab.entries.forEach { tab ->
-                            Tab(selected = selectedTab == tab, onClick = { selectedTab = tab }, text = { Text(tab.title, fontWeight = FontWeight.Bold) })
+                            Tab(selected = selectedTab == tab, onClick = { selectedTab = tab }, modifier = Modifier.height(36.dp), text = { Text(tab.title, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1) })
                         }
                     }
                     TableHeader(selectedTab)
@@ -189,12 +196,12 @@ private fun EmptyState() {
 
 @Composable
 private fun TableHeader(tab: SalesTab) {
-    Row(Modifier.fillMaxWidth().background(Navy).padding(vertical = 9.dp, horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text("المادة", color = Color.White, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.55f), textAlign = TextAlign.Center)
-        if (tab != SalesTab.RETAIL) Text("جملة\nطرد", color = Color.White, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
-        if (tab != SalesTab.RETAIL) Text("جملة\nعلبة", color = Color.White, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
-        if (tab != SalesTab.WHOLESALE) Text("مفرق\nطرد", color = Color.White, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
-        if (tab != SalesTab.WHOLESALE) Text("مفرق\nعلبة", color = Color.White, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
+    Row(Modifier.fillMaxWidth().background(Navy).padding(vertical = 4.dp, horizontal = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text("المادة", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.55f), textAlign = TextAlign.Center, maxLines = 1)
+        if (tab != SalesTab.RETAIL) Text("طرد", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center, maxLines = 1)
+        if (tab != SalesTab.RETAIL) Text("علبة", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center, maxLines = 1)
+        if (tab != SalesTab.WHOLESALE) Text("طرد", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center, maxLines = 1)
+        if (tab != SalesTab.WHOLESALE) Text("علبة", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center, maxLines = 1)
     }
 }
 
@@ -272,22 +279,66 @@ private fun exportXlsx(context: Context, uri: android.net.Uri, date: String, cat
     val sheet = workbook.createSheet("مبيعات ${date.replace('/', '-')}")
     sheet.setRightToLeft(true)
     val headers = listOf("رمز المادة", "المادة", "جملة طرد", "جملة علبة", "مفرق طرد", "مفرق علبة", "قيمة الجملة", "قيمة المفرق", "إجمالي المبيعات")
-    headers.forEachIndexed { i, h -> sheet.createRow(0).createCell(i).setCellValue(h) }
-    products.forEachIndexed { index, p ->
-        val row = sheet.createRow(index + 1)
+    val numberFormat = workbook.createDataFormat().getFormat("#,##0")
+    fun makeStyle(fill: IndexedColors, bold: Boolean = false, numeric: Boolean = false): XSSFCellStyle = workbook.createCellStyle().apply {
+        fillForegroundColor = fill.index
+        fillPattern = FillPatternType.SOLID_FOREGROUND
+        alignment = HorizontalAlignment.CENTER
+        verticalAlignment = VerticalAlignment.CENTER
+        borderLeft = BorderStyle.THIN
+        borderRight = BorderStyle.THIN
+        borderTop = BorderStyle.THIN
+        borderBottom = BorderStyle.THIN
+        if (numeric) dataFormat = numberFormat
+        val font = workbook.createFont().apply { this.bold = bold; fontHeightInPoints = if (bold) 11 else 10; color = if (fill == IndexedColors.DARK_TEAL) IndexedColors.WHITE.index else IndexedColors.BLACK.index }
+        setFont(font)
+    }
+    val headerStyle = makeStyle(IndexedColors.DARK_TEAL, bold = true)
+    val bodyStyle = makeStyle(IndexedColors.WHITE)
+    val altStyle = makeStyle(IndexedColors.GREY_25_PERCENT)
+    val bodyNumberStyle = makeStyle(IndexedColors.WHITE, numeric = true)
+    val altNumberStyle = makeStyle(IndexedColors.GREY_25_PERCENT, numeric = true)
+    val totalStyle = makeStyle(IndexedColors.LIGHT_TURQUOISE, bold = true, numeric = true)
+    val header = sheet.createRow(0)
+    header.heightInPoints = 26f
+    headers.forEachIndexed { i, h -> header.createCell(i).apply { setCellValue(h); cellStyle = headerStyle } }
+    var excelRow = 1
+    var wholesaleTotal = 0.0
+    var retailTotal = 0.0
+    products.forEach { p ->
+        val quantities = listOf("carton_wholesale", "box_wholesale", "carton_retail", "box_retail").map { amount(q[key(p.code, it)]) }
+        if (quantities.all { it == 0.0 }) return@forEach
+        val row = sheet.createRow(excelRow++)
         row.createCell(0).setCellValue(p.code)
         row.createCell(1).setCellValue(p.name)
-        val quantities = listOf("carton_wholesale", "box_wholesale", "carton_retail", "box_retail").map { amount(q[key(p.code, it)]) }
-        quantities.forEachIndexed { i, value -> row.createCell(i + 2).setCellValue(value) }
         val wholesaleValue = kotlin.math.round(quantities[0] * (p.carton?.wholesalePrice ?: 0.0) + quantities[1] * (p.box?.wholesalePrice ?: 0.0))
         val retailValue = kotlin.math.round(quantities[2] * (p.carton?.retailPrice ?: 0.0) + quantities[3] * (p.box?.retailPrice ?: 0.0))
-        row.createCell(6).setCellValue(wholesaleValue)
-        row.createCell(7).setCellValue(retailValue)
-        row.createCell(8).setCellValue(wholesaleValue + retailValue)
+        wholesaleTotal += wholesaleValue
+        retailTotal += retailValue
+        val textStyle = if (excelRow % 2 == 0) altStyle else bodyStyle
+        val numericStyle = if (excelRow % 2 == 0) altNumberStyle else bodyNumberStyle
+        row.getCell(0).cellStyle = textStyle
+        row.createCell(1).apply { setCellValue(p.name); cellStyle = textStyle }
+        quantities.forEachIndexed { i, value -> row.createCell(i + 2).apply { setCellValue(value); cellStyle = numericStyle } }
+        row.createCell(6).apply { setCellValue(wholesaleValue); cellStyle = numericStyle }
+        row.createCell(7).apply { setCellValue(retailValue); cellStyle = numericStyle }
+        row.createCell(8).apply { setCellValue(wholesaleValue + retailValue); cellStyle = numericStyle }
     }
+    val total = sheet.createRow(excelRow)
+    total.createCell(0).apply { setCellValue("الإجمالي"); cellStyle = totalStyle }
+    total.createCell(1).cellStyle = totalStyle
+    for (i in 2..5) total.createCell(i).apply { setCellValue(quantitiesTotal(products, q, i - 2)); cellStyle = totalStyle }
+    total.createCell(6).apply { setCellValue(wholesaleTotal); cellStyle = totalStyle }
+    total.createCell(7).apply { setCellValue(retailTotal); cellStyle = totalStyle }
+    total.createCell(8).apply { setCellValue(wholesaleTotal + retailTotal); cellStyle = totalStyle }
+    sheet.createFreezePane(0, 1)
+    sheet.setAutoFilter(CellRangeAddress(0, excelRow, 0, 8))
+    listOf(14, 26, 12, 12, 12, 12, 16, 16, 18).forEachIndexed { i, width -> sheet.setColumnWidth(i, width * 256) }
     context.contentResolver.openOutputStream(uri)?.use { workbook.write(it) } ?: error("تعذر إنشاء ملف Excel")
     workbook.close()
 }
+
+private fun quantitiesTotal(products: List<ProductLine>, q: Map<String, String>, index: Int): Double = products.sumOf { p -> amount(q[key(p.code, listOf("carton_wholesale", "box_wholesale", "carton_retail", "box_retail")[index])]) }
 
 private fun exportHistoryXlsx(context: Context, uri: android.net.Uri, preferences: android.content.SharedPreferences) {
     val workbook = XSSFWorkbook()
