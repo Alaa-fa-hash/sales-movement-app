@@ -231,7 +231,7 @@ private fun ProductRow(product: ProductLine, tab: SalesTab, quantities: MutableM
 
 @Composable
 private fun QuantityCell(enabled: Boolean, value: String, modifier: Modifier, onValueChange: (String) -> Unit) {
-    OutlinedTextField(value = value, onValueChange = onValueChange, enabled = enabled, singleLine = true, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done), textStyle = TextStyle(color = Navy, fontSize = 13.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center), contentPadding = PaddingValues(0.dp), modifier = modifier.height(42.dp).padding(horizontal = 2.dp), placeholder = { Text("0", color = Color(0xFF8A969C), fontSize = 12.sp) })
+    OutlinedTextField(value = value, onValueChange = onValueChange, enabled = enabled, singleLine = true, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done), textStyle = TextStyle(color = Navy, fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center), contentPadding = PaddingValues(0.dp), modifier = modifier.height(42.dp).padding(horizontal = 2.dp), placeholder = { Text("0", color = Color(0xFF8A969C), fontSize = 12.sp, lineHeight = 18.sp) })
 }
 
 private fun priceLabel(product: ProductLine, tab: SalesTab): String {
