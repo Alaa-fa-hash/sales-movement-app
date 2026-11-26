@@ -109,7 +109,11 @@ private fun SalesMovementApp() {
     var message by remember { mutableStateOf("") }
     var historyOpen by remember { mutableStateOf(false) }
     var selectedTab by remember { mutableStateOf(SalesTab.TOTAL) }
-    val specialSales = remember { mutableStateListOf(SpecialSaleDraft()) }
+    val specialSales = remember {
+        mutableStateListOf<SpecialSaleDraft>().apply {
+            repeat(20) { add(SpecialSaleDraft()) }
+        }
+    }
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
         runCatching {
