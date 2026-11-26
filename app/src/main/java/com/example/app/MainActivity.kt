@@ -162,8 +162,7 @@ private fun SalesMovementApp() {
                         quantities.clear()
                         specialSales.clear()
                         specialSales.add(SpecialSaleDraft())
-                        persistCurrentDay()
-                        message = "تم تصفير إدخالات اليوم"
+                        message = "تم تصفير الإدخالات دون تغيير السجل المحفوظ"
                     },
                 )
                 if (message.isNotBlank()) Text(message, color = Green, fontSize = 14.sp, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
