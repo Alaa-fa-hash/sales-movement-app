@@ -245,8 +245,9 @@ private fun Actions(onImport: () -> Unit, onSave: () -> Unit, onExport: () -> Un
         TextButton(onClick = onHistory, contentPadding = ButtonDefaults.TextButtonContentPadding, modifier = Modifier.weight(1f).height(40.dp)) { Text("السجل", fontSize = 12.sp, maxLines = 1) }
     }
     OutlinedButton(onClick = onExportHistory, contentPadding = ButtonDefaults.TextButtonContentPadding, modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp).height(34.dp)) { Text("تصدير سجل Excel", fontSize = 12.sp, maxLines = 1) }
-    OutlinedButton(onClick = onNewTask, contentPadding = ButtonDefaults.TextButtonContentPadding, modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp).height(34.dp)) { Text("بدء مهمة جديدة", fontSize = 12.sp, maxLines = 1) }
     TextButton(onClick = onClear, modifier = Modifier.fillMaxWidth().height(32.dp)) { Text("تصفير الإدخالات", fontSize = 12.sp) }
+    Spacer(Modifier.height(22.dp))
+    OutlinedButton(onClick = onNewTask, colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFB3261E)), contentPadding = ButtonDefaults.TextButtonContentPadding, modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp).height(38.dp)) { Text("بدء مهمة جديدة", fontSize = 12.sp, maxLines = 1) }
 }
 
 @Composable
