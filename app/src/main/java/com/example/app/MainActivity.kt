@@ -408,9 +408,10 @@ private fun HistoryDialog(preferences: android.content.SharedPreferences, close:
     AlertDialog(onDismissRequest = close, confirmButton = { TextButton(onClick = close) { Text("إغلاق") } }, title = { Text("سجل الأيام", color = Navy, fontWeight = FontWeight.Bold) }, text = {
         if (days.isEmpty()) Text("لا يوجد أيام محفوظة بعد.") else LazyColumn { items(days) { day ->
             val parts = preferences.getString("summary_$day", "0|0|0").orEmpty().split('|')
+            val dayTotal = parts.getOrNull(0)?.toDoubleOrNull() ?: 0.0
             Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(dateLabel(day), color = Navy, fontWeight = FontWeight.Bold)
-                Text("إجمالي المبيعات ${parts.getOrNull(0) ?: "0"}", color = Green)
+                Text("إجمالي المبيعات ${formatMoney(dayTotal)}", color = Green)
             }
             HorizontalDivider()
         } }
