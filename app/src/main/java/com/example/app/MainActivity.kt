@@ -220,14 +220,20 @@ private fun ProductRow(product: ProductLine, tab: SalesTab, quantities: MutableM
     val rowColor = if (rowIndex % 2 == 0) Color.White else RowAlt
     Row(Modifier.fillMaxWidth().background(rowColor).padding(vertical = 5.dp, horizontal = 3.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1.55f).padding(start = 7.dp, end = 3.dp), horizontalAlignment = Alignment.End) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(product.name, color = Navy, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
-                if (tab == SalesTab.TOTAL) {
-                    Column(modifier = Modifier.width(72.dp), horizontalAlignment = Alignment.Start) {
-                        Text("ج ${priceOnly(product.carton?.wholesalePrice, product.box?.wholesalePrice)}", color = Color(0xFF687782), fontSize = 9.sp, fontWeight = FontWeight.Bold, maxLines = 1)
-                        Text("م ${priceOnly(product.carton?.retailPrice, product.box?.retailPrice)}", color = Color(0xFF687782), fontSize = 9.sp, fontWeight = FontWeight.Bold, maxLines = 1)
-                    }
-                } else {
+            if (tab == SalesTab.TOTAL) {
+                Text(product.name, color = Navy, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.End)
+                Text(
+                    "ج ${priceOnly(product.carton?.wholesalePrice, product.box?.wholesalePrice)}  م ${priceOnly(product.carton?.retailPrice, product.box?.retailPrice)}",
+                    color = Color(0xFF687782),
+                    fontSize = 8.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.End,
+                )
+            } else {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(product.name, color = Navy, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
                     Text(priceLabel(product, tab), color = Color(0xFF687782), fontSize = 10.sp, fontWeight = FontWeight.Bold, maxLines = 1, modifier = Modifier.width(60.dp), textAlign = TextAlign.Start)
                 }
             }
