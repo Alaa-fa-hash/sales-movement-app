@@ -28,6 +28,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -60,6 +62,7 @@ private val Green = Color(0xFF2E7D50)
 
 private data class ProductLine(val code: String, val name: String, val carton: MaterialCatalog?, val box: MaterialCatalog?)
 private data class Totals(val wholesale: Double, val retail: Double, val revenue: Double)
+private enum class SalesTab(val title: String) { WHOLESALE("مبيع جملة"), RETAIL("مبيع مفرق"), TOTAL("الكلي") }
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -78,6 +81,7 @@ private fun SalesMovementApp() {
     val quantities = remember { mutableStateMapOf<String, String>().apply { putAll(loadDay(preferences, dateKey)) } }
     var message by remember { mutableStateOf("") }
     var historyOpen by remember { mutableStateOf(false) }
+    var selectedTab by remember { mutableStateOf(SalesTab.TOTAL) }
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
         runCatching {
@@ -107,9 +111,14 @@ private fun SalesMovementApp() {
                 )
                 if (message.isNotBlank()) Text(message, color = Green, fontSize = 14.sp, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
                 if (products.isEmpty()) EmptyState() else {
-                    TableHeader()
+                    TabRow(selectedTabIndex = selectedTab.ordinal, containerColor = Color.White, contentColor = Teal) {
+                        SalesTab.entries.forEach { tab ->
+                            Tab(selected = selectedTab == tab, onClick = { selectedTab = tab }, text = { Text(tab.title, fontWeight = FontWeight.Bold) })
+                        }
+                    }
+                    TableHeader(selectedTab)
                     LazyColumn(Modifier.fillMaxSize().padding(horizontal = 10.dp)) {
-                        items(products) { product -> ProductRow(product, quantities) { field, value -> quantities[key(product.code, field)] = value.filter { it.isDigit() } } }
+                        items(products) { product -> ProductRow(product, selectedTab, quantities) { field, value -> quantities[key(product.code, field)] = value.filter { it.isDigit() } } }
                         item { Spacer(Modifier.height(28.dp)) }
                     }
                 }
@@ -172,28 +181,28 @@ private fun EmptyState() {
 }
 
 @Composable
-private fun TableHeader() {
+private fun TableHeader(tab: SalesTab) {
     Row(Modifier.fillMaxWidth().background(Navy).padding(vertical = 9.dp, horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
         Text("المادة", color = Color.White, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.55f), textAlign = TextAlign.Center)
-        Text("جملة\nطرد", color = Color.White, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
-        Text("جملة\nعلبة", color = Color.White, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
-        Text("مفرق\nطرد", color = Color.White, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
-        Text("مفرق\nعلبة", color = Color.White, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
+        if (tab != SalesTab.RETAIL) Text("جملة\nطرد", color = Color.White, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
+        if (tab != SalesTab.RETAIL) Text("جملة\nعلبة", color = Color.White, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
+        if (tab != SalesTab.WHOLESALE) Text("مفرق\nطرد", color = Color.White, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
+        if (tab != SalesTab.WHOLESALE) Text("مفرق\nعلبة", color = Color.White, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
     }
 }
 
 @Composable
-private fun ProductRow(product: ProductLine, quantities: MutableMap<String, String>, onChange: (String, String) -> Unit) {
+private fun ProductRow(product: ProductLine, tab: SalesTab, quantities: MutableMap<String, String>, onChange: (String, String) -> Unit) {
     val rowColor = if (product.code.hashCode() % 2 == 0) Color.White else RowAlt
     Row(Modifier.fillMaxWidth().background(rowColor).padding(vertical = 7.dp, horizontal = 3.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1.55f).padding(horizontal = 3.dp), horizontalAlignment = Alignment.End) {
             Text(product.name, color = Navy, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1)
             Text(product.code, color = Color(0xFF687782), fontSize = 11.sp)
         }
-        QuantityCell(product.carton != null, quantities[key(product.code, "carton_wholesale")].orEmpty(), Modifier.weight(1f)) { onChange("carton_wholesale", it) }
-        QuantityCell(product.box != null, quantities[key(product.code, "box_wholesale")].orEmpty(), Modifier.weight(1f)) { onChange("box_wholesale", it) }
-        QuantityCell(product.carton != null, quantities[key(product.code, "carton_retail")].orEmpty(), Modifier.weight(1f)) { onChange("carton_retail", it) }
-        QuantityCell(product.box != null, quantities[key(product.code, "box_retail")].orEmpty(), Modifier.weight(1f)) { onChange("box_retail", it) }
+        if (tab != SalesTab.RETAIL) QuantityCell(product.carton != null, quantities[key(product.code, "carton_wholesale")].orEmpty(), Modifier.weight(1f)) { onChange("carton_wholesale", it) }
+        if (tab != SalesTab.RETAIL) QuantityCell(product.box != null, quantities[key(product.code, "box_wholesale")].orEmpty(), Modifier.weight(1f)) { onChange("box_wholesale", it) }
+        if (tab != SalesTab.WHOLESALE) QuantityCell(product.carton != null, quantities[key(product.code, "carton_retail")].orEmpty(), Modifier.weight(1f)) { onChange("carton_retail", it) }
+        if (tab != SalesTab.WHOLESALE) QuantityCell(product.box != null, quantities[key(product.code, "box_retail")].orEmpty(), Modifier.weight(1f)) { onChange("box_retail", it) }
     }
     HorizontalDivider(color = Color(0xFFD7E2E6))
 }
