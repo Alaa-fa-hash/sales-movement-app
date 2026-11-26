@@ -211,7 +211,7 @@ private fun ProductRow(product: ProductLine, tab: SalesTab, quantities: MutableM
     Row(Modifier.fillMaxWidth().background(rowColor).padding(vertical = 7.dp, horizontal = 3.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1.55f).padding(horizontal = 3.dp), horizontalAlignment = Alignment.End) {
             Text(product.name, color = Navy, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1)
-            Text(product.code, color = Color(0xFF687782), fontSize = 11.sp)
+            Text(priceLabel(product, tab), color = Color(0xFF687782), fontSize = 10.sp, maxLines = 1)
         }
         if (tab != SalesTab.RETAIL) QuantityCell(product.carton != null, quantities[key(product.code, "carton_wholesale")].orEmpty(), Modifier.weight(1f)) { onChange("carton_wholesale", it) }
         if (tab != SalesTab.RETAIL) QuantityCell(product.box != null, quantities[key(product.code, "box_wholesale")].orEmpty(), Modifier.weight(1f)) { onChange("box_wholesale", it) }
@@ -224,6 +224,15 @@ private fun ProductRow(product: ProductLine, tab: SalesTab, quantities: MutableM
 @Composable
 private fun QuantityCell(enabled: Boolean, value: String, modifier: Modifier, onValueChange: (String) -> Unit) {
     OutlinedTextField(value = value, onValueChange = onValueChange, enabled = enabled, singleLine = true, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done), textStyle = TextStyle(fontSize = 13.sp, textAlign = TextAlign.Center), modifier = modifier.padding(horizontal = 2.dp), placeholder = { Text("0", fontSize = 12.sp) })
+}
+
+private fun priceLabel(product: ProductLine, tab: SalesTab): String {
+    fun price(value: Double?): String = value?.let { formatMoney(it) } ?: "—"
+    return when (tab) {
+        SalesTab.WHOLESALE -> "طرد ${price(product.carton?.wholesalePrice)} | علبة ${price(product.box?.wholesalePrice)}"
+        SalesTab.RETAIL -> "طرد ${price(product.carton?.retailPrice)} | علبة ${price(product.box?.retailPrice)}"
+        SalesTab.TOTAL -> "ج: ${price(product.carton?.wholesalePrice)} / م: ${price(product.carton?.retailPrice)}"
+    }
 }
 
 @Composable
