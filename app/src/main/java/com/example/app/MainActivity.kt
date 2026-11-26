@@ -68,11 +68,12 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-private val Teal = Color(0xFF1699A8)
-private val Navy = Color(0xFF0B6672)
-private val Page = Color(0xFFF7F3EA)
-private val RowAlt = Color(0xFFF2F5F7)
-private val Green = Color(0xFF197D83)
+private val Teal = Color(0xFF0B7A8C)
+private val Navy = Color(0xFF0B7A8C)
+private val Page = Color(0xFFFFFFFF)
+private val RowAlt = Color(0xFFE8F4F6)
+private val TotalFill = Color(0xFFD5ECEF)
+private val Green = Color(0xFF0B7A8C)
 
 private data class ProductLine(val code: String, val name: String, val carton: MaterialCatalog?, val box: MaterialCatalog?)
 private data class Totals(val wholesale: Double, val retail: Double, val revenue: Double)
@@ -170,7 +171,7 @@ private fun SummaryBar(t: Totals) {
 
 @Composable
 private fun SummaryCell(label: String, value: Double, color: Color = Navy, suffix: String = "") {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = if (label == "الإجمالي") Modifier.background(TotalFill) else Modifier) {
         Text(label, color = Color(0xFF687782), fontSize = 11.sp)
         Text(formatMoney(value) + suffix, color = color, fontSize = 15.sp, fontWeight = FontWeight.Bold)
     }
@@ -325,14 +326,15 @@ private fun exportXlsx(context: Context, uri: android.net.Uri, date: String, cat
         val font = workbook.createFont().apply { this.bold = bold; fontHeightInPoints = if (bold) 11 else 10; color = if (whiteText) IndexedColors.WHITE.index else IndexedColors.BLACK.index }
         setFont(font)
     }
-    val headerStyle = makeStyle(rgb("1699A8"), bold = true, whiteText = true)
+    val headerStyle = makeStyle(rgb("0B7A8C"), bold = true, whiteText = true)
     val whiteFill = rgb("FFFFFF")
-    val neutralFill = rgb("F2F5F7")
+    val neutralFill = rgb("E8F4F6")
+    val totalFill = rgb("D5ECEF")
     val bodyStyle = makeStyle(whiteFill)
     val altStyle = makeStyle(neutralFill)
     val bodyNumberStyle = makeStyle(whiteFill, numeric = true)
     val altNumberStyle = makeStyle(neutralFill, numeric = true)
-    val totalStyle = makeStyle(neutralFill, bold = true, numeric = true)
+    val totalStyle = makeStyle(totalFill, bold = true, numeric = true)
     val header = sheet.createRow(0)
     header.heightInPoints = 26f
     headers.forEachIndexed { i, h -> header.createCell(i).apply { setCellValue(h); cellStyle = headerStyle } }
@@ -349,8 +351,9 @@ private fun exportXlsx(context: Context, uri: android.net.Uri, date: String, cat
         val retailValue = kotlin.math.round(quantities[2] * (p.carton?.retailPrice ?: 0.0) + quantities[3] * (p.box?.retailPrice ?: 0.0))
         wholesaleTotal += wholesaleValue
         retailTotal += retailValue
-        val textStyle = if (excelRow % 2 == 0) altStyle else bodyStyle
-        val numericStyle = if (excelRow % 2 == 0) altNumberStyle else bodyNumberStyle
+        val dataIndex = excelRow - 1
+        val textStyle = if (dataIndex % 2 == 1) altStyle else bodyStyle
+        val numericStyle = if (dataIndex % 2 == 1) altNumberStyle else bodyNumberStyle
         row.getCell(0).cellStyle = textStyle
         row.createCell(1).apply { setCellValue(p.name); cellStyle = textStyle }
         quantities.forEachIndexed { i, value -> row.createCell(i + 2).apply { setCellValue(value); cellStyle = numericStyle } }
