@@ -452,7 +452,7 @@ private fun buildProducts(catalog: List<MaterialCatalog>): List<ProductLine> = c
         )
     }
     ProductLine(code, items.firstOrNull { it.name.isNotBlank() }?.name.orEmpty(), merged(MaterialUnit.CARTON), merged(MaterialUnit.BOX))
-}.sortedBy { it.code }
+}
 
 private fun calculateTotals(products: List<ProductLine>, q: Map<String, String>): Totals {
     var wholesale = 0.0; var retail = 0.0
